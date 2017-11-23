@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- 如果需要代码提示和xml验证，必须引入如下Root中的所有属性，用来指定命名空间和schemaLocation -->
+<!-- 如果是网上schema，提供一下信息，即可验证。如果是本地schema。需要在eclipse的配置中，
+	window```Preference````XML````XML Catalog中添加本地schema路径 -->
+<!-- xsi:schemaLocation="http://www.example.org/expReturn  
+		http://172.20.33.51/AEC/schema/express/expReturn.xsd " -->
+<Root xmlns="http://www.example.org/expReturn" 
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:noNamespaceSchemaLocation="expReturn.xsd"
+		>
+	<Header>
+		<MessageReferenceNumber>快递订单退货</MessageReferenceNumber>
+		<DocumentName>E_EXP_RTN</DocumentName>
+		<SenderCode>AMAZON</SenderCode>
+		<ReceiverCode>SINOTRANS</ReceiverCode>
+		<MessageSendingDateTime>2016-09-23 16:00:01</MessageSendingDateTime>
+	</Header>
+	
+	<Body>
+		<Shipment>
+			<shipmentID>EX201609230001</shipmentID>
+			<rtnReason>库内异常</rtnReason>
+			<pickupRtnFlag>Y</pickupRtnFlag>
+		</Shipment>
+		<Shipment>
+			<shipmentID>EX201609230002</shipmentID>
+			<rtnReason>seller取消单</rtnReason>
+			<pickupRtnFlag>N</pickupRtnFlag>
+		</Shipment>
+	</Body>
+</Root>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--?代表0次或1次， * 代表0次或多次， +至少出现一次-->
+<!ELEMENT teacher (teaName, teaSex, teaEmail, teaTel, teaAddress, teaBorn, students)>
+<!ATTLIST teacher id ID #REQUIRED>
+<!ELEMENT teaName (#PCDATA)>
+<!ELEMENT teaSex (#PCDATA)>
+<!ELEMENT teaEmail (#PCDATA)>
+<!ELEMENT teaTel (#PCDATA)>
+<!ELEMENT teaAddress (#PCDATA)>
+<!ELEMENT teaBorn (#PCDATA)>
+<!ELEMENT students (student*)>
+<!ELEMENT student (stuName,stuTel,stuEmail)>
+<!ELEMENT stuName (#PCDATA)>
+<!ELEMENT stuTel (#PCDATA)>
+<!ELEMENT stuEmail (#PCDATA)>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.example.org/teacher"
+	xmlns:tns="http://www.example.org/teacher" elementFormDefault="qualified">
+	<element name="teacher">
+		<complexType>
+			<sequence>
+				<element name="teaName" type="string"/>
+				<element name="teaSex" type="string"/>
+				<element name="teaEmail" type="string"/>
+				<element name="teaTel" type="string"/>
+				<element name="teaAddress" type="string"/>
+				<element name="teaBorn" type="date"/>
+				<element name="students" minOccurs="1" maxOccurs="1">
+					<complexType>
+						<sequence>
+							<!-- maxOccurs限定次数 -->
+							<element name="student" maxOccurs="unbounded">
+								<complexType>
+									<sequence>
+										<element name="stuName" type="string"/>
+										<element name="stuTel" type="string"/>
+										<element name="stuEmail" type="string"/>
+									</sequence>
+									<!-- 属性必须定义在sequence之后 -->
+									<attribute name="id" type="int" use="required"></attribute>
+								</complexType>
+							</element>
+						</sequence>
+					</complexType>		
+				</element>
+			</sequence>
+		</complexType>
+	</element>
+</schema>

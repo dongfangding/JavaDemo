@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Root>
+    <Header>
+        <MessageReferenceNumber>depot取消</MessageReferenceNumber>
+        <DocumentName>E_EXP_CANCEL</DocumentName>
+        <SenderCode>AMAZON</SenderCode>
+        <ReceiverCode>EASTTOP</ReceiverCode>
+        <MessageSendingDateTime>2016-06-28 17:02:42</MessageSendingDateTime>
+    </Header>
+    <Body>
+        <Shipment>
+            <shipmentID>EX16062800007</shipmentID>
+            <remarks></remarks>
+        </Shipment>
+    </Body>
+</Root>

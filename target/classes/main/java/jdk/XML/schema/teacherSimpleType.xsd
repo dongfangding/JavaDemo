@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema"
+	targetNamespace="http://www.example.org/teacherSimpleType"
+	xmlns:tns="http://www.example.org/teacherSimpleType"
+	elementFormDefault="qualified">
+	
+	<include schemaLocation="studentSimpleType.xsd"></include>
+	
+	<!-- tns为默认本地schema的命名空间，通过type来指定一个类型 -->
+	<element name="teacher" type="tns:teacherType"></element>
+	
+	<!-- 创建一个schema类型 -->
+	<complexType name="teacherType">
+		<sequence>
+			<element name="name" type="tns:nameType"/>
+			<element name="sex" type="tns:sexType"/>
+			<element name="email" type="tns:emailType"/>
+			<element name="tel" type="tns:telType"/>
+			<element name="address" type="string"/>
+			<element name="born" type="date"/>
+			<element name="students">
+				<complexType>
+					<sequence>
+						<element name="student" type="tns:studentType" maxOccurs="unbounded"/>
+					</sequence>
+				</complexType>
+			</element>
+		</sequence>
+	</complexType>
+	
+	<!-- 创建一个teaName的simpleType类型，用来验证值 -->
+	<simpleType name="nameType">
+		<restriction base="string">
+			<maxLength value="20"></maxLength>
+		</restriction>
+	</simpleType>
+	
+	<!-- 创建一个teaSex的simpleType类型，用来验证值 -->
+	<simpleType name="sexType">
+		<restriction base="string">
+			<enumeration value="男"></enumeration>
+			<enumeration value="女"></enumeration>
+		</restriction>
+	</simpleType>
+	
+	<simpleType name="emailType">
+		<restriction base="string">
+			<!-- <pattern value="^(\w-*\.*)+@(\w-?)+(\.\w{2,})+$"></pattern> -->
+		</restriction>
+	</simpleType>
+	
+	<simpleType name="telType">
+		<restriction base="string">
+			<!-- <pattern value="^1(3|4|5|7|8)\d{9}"></pattern> -->
+		</restriction>
+	</simpleType>
+	
+</schema>
