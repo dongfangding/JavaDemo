@@ -39,7 +39,8 @@ public class TCPMyTomcatBrowser {
 	 * 返回一张图片
 	 * 两个只能同时返回一个，否则会破坏图片的字节流，导致图片出现问题
 	 */
-	private static void myTomcat() {
+	@Test
+	public static void myTomcat() {
 		ServerSocket server = null;
 		Socket client = null;
 		try {
@@ -82,6 +83,7 @@ public class TCPMyTomcatBrowser {
 	/**
 	 * 一个简单的服务器，只负责打印客户端发送的数据
 	 */
+	@Test
 	public static void myTomcat2() {
 		ServerSocket server = null;
 		Socket client = null;
@@ -106,7 +108,8 @@ public class TCPMyTomcatBrowser {
 	 * 在此例中，会返回头信息。
 	 * 
 	 */
-	private static void myBrowser() {
+	@Test
+	public static void myBrowser() {
 		Socket socket = null;
 		try {
 			socket = new Socket("localhost", 8082);
@@ -143,6 +146,7 @@ public class TCPMyTomcatBrowser {
 	 * 使用java.net.URL对象连接服务器资源，此对象内部封装了socket操作，
 	 * 此对象可以获得一个主机连接信息对象URlConnection对象，可以操作、解析http响应信息
 	 */
+	@Test
 	public static void myBrowser2() {
 		InputStream in = null;
 		try {
@@ -186,6 +190,7 @@ public class TCPMyTomcatBrowser {
 		setUseCaches 如果为 true，则只要有条件就允许协议使用缓存。如果为 false，则该协议始终必须获得此对象的新副本。 
 
 	 */
+	@Test
 	public static void myBrowser3() {
 		InputStream in = null;
 		try {
@@ -224,6 +229,7 @@ public class TCPMyTomcatBrowser {
 	/**
 	 * 自定义浏览器和服务器发送数据，测试outputstream。未成功。
 	 */
+	@Test
 	public static void myBrowser4() {
 		InputStream in = null;
 		try {
@@ -260,6 +266,7 @@ public class TCPMyTomcatBrowser {
 	/**
 	 * 模拟真实的向服务端请求数据,未成功！
 	 */
+	@Test
 	public static void myBrowser5() {
 		try {
 			// 创建统一资源定位符对象，可以是任何网络资源

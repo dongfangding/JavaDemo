@@ -9,15 +9,17 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
+import org.junit.Test;
+
 
 public class UDPSendDemo1 {
-
-	public static void main(String[] args) {
-		// simpleUdpSendClient();
-		updSendClient2();
-	}
-
-	private static void simpleUdpSendClient() {
+	
+	
+	/**
+	 * UDP协议的发送，需要配合UDPReceiveDemo1来使用，先开启接收端，再开启发送端
+	 */
+	@Test
+	public void simpleUdpSendClient() {
 		// 创建UDP传输对象
 		DatagramSocket socket = null;
 		try {
@@ -26,6 +28,7 @@ public class UDPSendDemo1 {
 			String message = "udp传输演示2323232";
 			// 创建数据包使用DatagramPacket,数据报包用来实现无连接包投递服务,从一台机器发送到另
 			// 一台机器的多个包可能选择不同的路由，也可能按不同的顺序到达,不对包投递做出保证。 
+			System.out.println(InetAddress.getLocalHost());
 			DatagramPacket packet = new DatagramPacket(message.getBytes(), message.getBytes().length,
 					InetAddress.getLocalHost(), 10000);
 			// 发送数据包
@@ -44,7 +47,8 @@ public class UDPSendDemo1 {
 		}
 	}
 	
-	private static void updSendClient2() {
+	@Test
+	public void updSendClient2() {
 		DatagramSocket sendSocket = null;
 		try {
 			// 创建UDP服务

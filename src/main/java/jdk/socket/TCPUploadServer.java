@@ -13,16 +13,15 @@ import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+import org.junit.Test;
+
 public class TCPUploadServer {
-	public static void main(String []args) {
-		// uploadTextClient();
-		uploadPictureServer();
-	}
 
 	/**
 	 * 上传文本的服务端
 	 */
-	private static void uploadTextClient() {
+	@Test
+	public void uploadTextClient() {
 		ServerSocket serverSocket = null;
 		Socket client = null;
 		BufferedWriter bw = null;
@@ -75,9 +74,10 @@ public class TCPUploadServer {
 	}
 	
 	/**
-	 * 上传图片的客户端
+	 * 上传图片的服务端
 	 */
-	private static void uploadPictureServer() {
+	@Test
+	public void uploadPictureServer() {
 		ServerSocket server = null;
 		Socket socket = null;
 		try {

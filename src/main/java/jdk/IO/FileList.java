@@ -2,17 +2,13 @@ package main.java.jdk.IO;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+
+import org.junit.Test;
 
 public class FileList {
 
-	public static void main(String[] args) {
-		Map<String, String> map = new HashMap<String, String>();
-		System.out.println(map.get("12"));
-	}
-	
+	@Test
 	public static void fileList() {
 		String path = "C:" + File.separator + "IN" + File.separator;
 		if(!new File(path).exists()) {
@@ -38,6 +34,8 @@ public class FileList {
 		}
 	}
 	
+	
+	@Test
 	public static void fileName() {
 		String path = "C:/AEC_DATA/data/fedEx/openShipment/783675009556/OUTBOUND_LABEL.783675009556_0.zpl";
 		if(!new File(path).exists()) {
@@ -46,6 +44,7 @@ public class FileList {
 		System.out.println(new File(path).getParentFile());
 	}
 	
+	@Test
 	public static void fileList2() {
 		String path = "C:/AEC_DATA/data/fedEx/openShipment";
 		if(!new File(path).exists()) {

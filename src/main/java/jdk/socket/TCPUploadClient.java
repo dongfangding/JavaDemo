@@ -13,6 +13,8 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
+import org.junit.Test;
+
 
 /**
  * 向服务器上传文件
@@ -22,15 +24,12 @@ import java.net.UnknownHostException;
  *
  */
 public class TCPUploadClient {
-	public static void main(String[] args) {
-		// uploadTextClient();
-		uploadPictureClient();
-	}
 	
 	/**
 	 * 上传图片的客户端
 	 */
-	private static void uploadTextClient() {
+	@Test
+	public void uploadTextClient() {
 		Socket socket = null;
 		BufferedReader br = null;
 		try {
@@ -81,7 +80,8 @@ public class TCPUploadClient {
 	/**
 	 * 上传图片客户端
 	 */
-	private static void uploadPictureClient() {
+	@Test
+	public void uploadPictureClient() {
 		Socket socket = null;
 		FileInputStream fis = null;
 		try {

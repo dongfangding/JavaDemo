@@ -11,14 +11,12 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+import org.junit.Test;
+
 public class TCPServerDemo2 {
 
-	public static void main(String[] args) {
-		// simpleSendReceServer();
-		textTransServer();
-	}
-
-	private static void simpleSendReceServer() {
+	@Test
+	public void simpleSendReceServer() {
 		ServerSocket serverSocket = null;
 		Socket clientSocket = null;
 		try {
@@ -59,7 +57,8 @@ public class TCPServerDemo2 {
 	/**
 	 * 将客户端发送的字符转换为大写并返回
 	 */
-	private static void textTransServer() {
+	@Test
+	public void textTransServer() {
 		ServerSocket serverSocket = null;
 		Socket client = null;
 		try {

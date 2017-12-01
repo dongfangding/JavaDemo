@@ -12,16 +12,15 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
+import org.junit.Test;
+
 public class TCPClientDemo2 {
 
-	public static void main(String[] args) {
-		// simpleSendReceClient();
-		textTransClient();
-	}
 
 	/**
 	 * 简单的一个服务端与客户端连接的小程序
 	 */
+	@Test
 	private static void simpleSendReceClient() {
 		Socket socket = null;
 		try {
@@ -54,6 +53,7 @@ public class TCPClientDemo2 {
 	/**
 	 * 向文本转换服务发送需要转换为大写的字符
 	 */
+	@Test
 	private static void textTransClient() {
 		Socket socket = null;
 		BufferedReader brRead = null;

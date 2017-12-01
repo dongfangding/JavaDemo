@@ -5,14 +5,16 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
 
+import org.junit.Test;
+
 public class UDPReceiveDemo1 {
-
-	public static void main(String[] args) {
-		// simpleUdpReceServer();
-		udpReceServer2();
-	}
-
-	private static void simpleUdpReceServer() {
+	
+	
+	/**
+	 * UDP协议的发送，需要配合UDPSendDemo1来使用，先开启接收端，再开启发送端
+	 */
+	@Test
+	public void simpleUdpReceServer() {
 		DatagramSocket receSocket = null;
 		try {
 			// 创建UDP socket服务,因为是接收端，必须明确一个端口号
@@ -42,7 +44,9 @@ public class UDPReceiveDemo1 {
 		}
 	}
 	
-	private static void udpReceServer2() {
+	
+	@Test
+	public void udpReceServer2() {
 		DatagramSocket receSocket = null;
 		try {
 			// 创建UDP socket服务,因为是接收端，必须明确一个端口号
