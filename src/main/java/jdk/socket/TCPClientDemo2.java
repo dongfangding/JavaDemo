@@ -21,7 +21,7 @@ public class TCPClientDemo2 {
 	 * 简单的一个服务端与客户端连接的小程序
 	 */
 	@Test
-	private static void simpleSendReceClient() {
+	public void simpleSendReceClient() {
 		Socket socket = null;
 		try {
 			// 创建客户端socket连接对象，需要明确要链接的主机和端口号
@@ -54,7 +54,7 @@ public class TCPClientDemo2 {
 	 * 向文本转换服务发送需要转换为大写的字符
 	 */
 	@Test
-	private static void textTransClient() {
+	public  void textTransClient() {
 		Socket socket = null;
 		BufferedReader brRead = null;
 		try {

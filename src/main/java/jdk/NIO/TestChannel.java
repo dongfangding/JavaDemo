@@ -160,6 +160,7 @@ public class TestChannel {
 		long start = System.currentTimeMillis();
 
 		FileChannel inChannel = FileChannel.open(Paths.get("Java NIO.pdf"), StandardOpenOption.READ);
+		// 因为下面的内存映射文件的outMappedBuf的MapMode是MapMode.READ_WRITE，所以这里要有READ和WRITE
 		FileChannel outChannel = FileChannel.open(Paths.get("Java NIO2.pdf"), StandardOpenOption.WRITE,
 				StandardOpenOption.READ, StandardOpenOption.CREATE);
 
@@ -204,6 +205,7 @@ public class TestChannel {
 				buf.flip(); // 切换读取数据的模式
 				// ④将缓冲区中的数据写入通道中
 				outChannel.write(buf);
+				// 如果不清空，会一直在读写。
 				buf.clear(); // 清空缓冲区
 			}
 		} catch (IOException e) {
@@ -246,5 +248,41 @@ public class TestChannel {
 		System.out.println("耗费时间为：" + (end - start));
 
 	}
-
+	
+	/**
+	 * 传统文件读写操作
+	 */
+	@Test
+	public void test() {
+		FileInputStream fis = null;
+		FileOutputStream fos = null;
+		try {
+			fis = new FileInputStream("Java NIO.pdf");
+			fos = new FileOutputStream("Java NIO2.pdf");
+			
+			byte []buf = new byte[1024];
+			while (fis.read(buf) != -1) {
+				System.out.println(new String(buf, 0, buf.length));
+				fos.write(buf, 0, buf.length);
+				fos.flush();
+			}
+		} catch (IOException e) {
+			
+		} finally {
+			if (fis != null) {
+				try {
+					fis.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			if (fos != null) {
+				try {
+					fos.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
 }

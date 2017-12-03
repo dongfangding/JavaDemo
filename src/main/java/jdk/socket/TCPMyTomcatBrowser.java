@@ -23,15 +23,13 @@ import org.junit.Test;
  */
 public class TCPMyTomcatBrowser {
 
-	public static void main(String[] args) {
-		// myTomcat(); //socket模拟tomcat响应数据,无交互，单独运行即可，只是返回固定的数据
-		// myTomcat2(); // 和myBrowser4一起运行， 一个简单的服务端，只负责将客户端的数据打印出来
-	    // myBrowser(); // socket模拟浏览器发送请求,需要启动tomcat
-		// myBrowser2(); // URL对象访问资源,需要启动tomcat
-		// myBrowser3(); // URLConnection对象，需要启动tomcat
-		// myBrowser4(); // 和myTomcat2一起运行
-		myBrowser5();
-	}
+	// myTomcat(); //socket模拟tomcat响应数据,无交互，单独运行即可，只是返回固定的数据
+	// myTomcat2(); // 和myBrowser4一起运行， 一个简单的服务端，只负责将客户端的数据打印出来
+    // myBrowser(); // socket模拟浏览器发送请求,需要启动tomcat
+	// myBrowser2(); // URL对象访问资源,需要启动tomcat
+	// myBrowser3(); // URLConnection对象，需要启动tomcat
+	// myBrowser4(); // 和myTomcat2一起运行
+	// myBrowser5();
 	
 	/**
 	 * 浏览器是一个客户端，模拟浏览器访问http://localhost:10007,给浏览器返回数据
@@ -40,7 +38,7 @@ public class TCPMyTomcatBrowser {
 	 * 两个只能同时返回一个，否则会破坏图片的字节流，导致图片出现问题
 	 */
 	@Test
-	public static void myTomcat() {
+	public void myTomcat() {
 		ServerSocket server = null;
 		Socket client = null;
 		try {
@@ -84,7 +82,7 @@ public class TCPMyTomcatBrowser {
 	 * 一个简单的服务器，只负责打印客户端发送的数据
 	 */
 	@Test
-	public static void myTomcat2() {
+	public void myTomcat2() {
 		ServerSocket server = null;
 		Socket client = null;
 		try {
@@ -109,7 +107,7 @@ public class TCPMyTomcatBrowser {
 	 * 
 	 */
 	@Test
-	public static void myBrowser() {
+	public void myBrowser() {
 		Socket socket = null;
 		try {
 			socket = new Socket("localhost", 8082);
@@ -147,7 +145,7 @@ public class TCPMyTomcatBrowser {
 	 * 此对象可以获得一个主机连接信息对象URlConnection对象，可以操作、解析http响应信息
 	 */
 	@Test
-	public static void myBrowser2() {
+	public void myBrowser2() {
 		InputStream in = null;
 		try {
 			URL url = new URL("http://localhost:8082/examples/index.html");
@@ -191,7 +189,7 @@ public class TCPMyTomcatBrowser {
 
 	 */
 	@Test
-	public static void myBrowser3() {
+	public void myBrowser3() {
 		InputStream in = null;
 		try {
 			// 创建统一资源定位符对象，可以是任何网络资源
@@ -230,7 +228,7 @@ public class TCPMyTomcatBrowser {
 	 * 自定义浏览器和服务器发送数据，测试outputstream。未成功。
 	 */
 	@Test
-	public static void myBrowser4() {
+	public void myBrowser4() {
 		InputStream in = null;
 		try {
 			// 创建统一资源定位符对象，可以是任何网络资源
@@ -267,7 +265,7 @@ public class TCPMyTomcatBrowser {
 	 * 模拟真实的向服务端请求数据,未成功！
 	 */
 	@Test
-	public static void myBrowser5() {
+	public void myBrowser5() {
 		try {
 			// 创建统一资源定位符对象，可以是任何网络资源
 			URL url = new URL("http://120.25.126.214:8080/HiDesk/front");// 
