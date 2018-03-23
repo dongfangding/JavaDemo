@@ -55,19 +55,33 @@ public class StreamDemo {
 		System.out.println("打印所有的数据");
 		personList.stream().forEach(System.out::println);
 		
+		System.out.println("对lambda体内增加逻辑代码");
+		personList.stream().forEach((person) -> {
+			person.setCity("中国" + person.getCity());
+			// to do something
+			System.out.println("id: " + person.getId());
+			System.out.println("name: " + person.getName());
+			System.out.println("city: " + person.getCity());
+			
+		});
+		
+		
 		// 查找对象id为1的数据
 		System.out.println("查找对象id为1的数据");
 		Integer id = 1;
 		personList.stream().
-				filter(x -> x.getId() == id).
+				filter(person -> person.getId() == id).
 				collect(Collectors.toList()).
 				forEach(System.out::println);
 		
 		// 查找所有安徽的数据
 		System.out.println("查找所有安徽的数据");
 		String city = "安徽";
-		personList.stream().filter(x -> x.getCity().equals(city)).collect(Collectors.toList())
-			.forEach(System.out::println);
+		List<Person> rtnlist = personList.stream().
+				filter(person -> person.getCity().contains(city)).
+				collect(Collectors.toList());
+		rtnlist.stream().forEach(System.out::println);
+		
 		
 		// 查找所有人员存在哪些区域，需要去重
 		System.out.println("查找所有人员存在哪些区域，需要去重");
@@ -90,8 +104,15 @@ public class StreamDemo {
 		// 查找里面Map 的id为1的数据
 		System.out.println("查找里面Map 的id为1的数据");
 		Integer MapId = 1;
-		mapList.stream().filter((map) -> map.get("id").equals(MapId)).collect(Collectors.toList())
-			.forEach(System.out::println);
+		List<Map<String, Object>> rtnList2 = mapList.stream()
+				.filter((map) -> map.get("id").equals(MapId))
+				.collect(Collectors.toList());
+		rtnList2.stream().forEach(System.out::println);
+		
+		rtnList2.stream().forEach((map) -> {
+			
+		});
+		
 	}
 	
 	class Person {
