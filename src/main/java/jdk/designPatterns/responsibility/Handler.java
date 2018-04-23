@@ -1,5 +1,5 @@
-package main.java.jdk.designPatterns.responsibility;
+package jdk.designPatterns.responsibility;
 
 public interface Handler {
-	public void handlerRequest(Boy boy);
+    public void handlerRequest(Boy boy);
 }

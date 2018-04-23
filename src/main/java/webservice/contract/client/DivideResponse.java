@@ -1,5 +1,5 @@
 
-package main.java.webservice.contract.client;
+package webservice.contract.client;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -8,9 +8,9 @@ import javax.xml.bind.annotation.XmlType;
 
 /**
  * <p>Java class for divideResponse complex type.
- * 
+ *
  * <p>The following schema fragment specifies the expected content contained within this class.
- * 
+ *
  * <pre>
  * &lt;complexType name="divideResponse">
  *   &lt;complexContent>
@@ -22,12 +22,10 @@ import javax.xml.bind.annotation.XmlType;
  *   &lt;/complexContent>
  * &lt;/complexType>
  * </pre>
- * 
- * 
  */
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "divideResponse", propOrder = {
-    "divideResult"
+        "divideResult"
 })
 public class DivideResponse {
 
@@ -35,7 +33,6 @@ public class DivideResponse {
 
     /**
      * Gets the value of the divideResult property.
-     * 
      */
     public int getDivideResult() {
         return divideResult;
@@ -43,7 +40,6 @@ public class DivideResponse {
 
     /**
      * Sets the value of the divideResult property.
-     * 
      */
     public void setDivideResult(int value) {
         this.divideResult = value;

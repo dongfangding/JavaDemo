@@ -1,5 +1,5 @@
 
-package main.java.webservice.contract.service;
+package webservice.contract.service;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -8,9 +8,9 @@ import javax.xml.bind.annotation.XmlType;
 
 /**
  * <p>Java class for addRequest complex type.
- * 
+ *
  * <p>The following schema fragment specifies the expected content contained within this class.
- * 
+ *
  * <pre>
  * &lt;complexType name="addRequest">
  *   &lt;complexContent>
@@ -23,13 +23,11 @@ import javax.xml.bind.annotation.XmlType;
  *   &lt;/complexContent>
  * &lt;/complexType>
  * </pre>
- * 
- * 
  */
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "addRequest", propOrder = {
-    "num1",
-    "num2"
+        "num1",
+        "num2"
 })
 public class AddRequest {
 
@@ -38,7 +36,6 @@ public class AddRequest {
 
     /**
      * Gets the value of the num1 property.
-     * 
      */
     public int getNum1() {
         return num1;
@@ -46,7 +43,6 @@ public class AddRequest {
 
     /**
      * Sets the value of the num1 property.
-     * 
      */
     public void setNum1(int value) {
         this.num1 = value;
@@ -54,7 +50,6 @@ public class AddRequest {
 
     /**
      * Gets the value of the num2 property.
-     * 
      */
     public int getNum2() {
         return num2;
@@ -62,7 +57,6 @@ public class AddRequest {
 
     /**
      * Sets the value of the num2 property.
-     * 
      */
     public void setNum2(int value) {
         this.num2 = value;

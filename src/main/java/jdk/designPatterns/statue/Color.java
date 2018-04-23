@@ -1,5 +1,5 @@
-package main.java.jdk.designPatterns.statue;
+package jdk.designPatterns.statue;
 
 public interface Color {
-	public void show();
+    public void show();
 }

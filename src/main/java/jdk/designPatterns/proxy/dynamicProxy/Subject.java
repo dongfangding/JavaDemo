@@ -1,6 +1,7 @@
-package main.java.jdk.designPatterns.proxy.dynamicProxy;
+package jdk.designPatterns.proxy.dynamicProxy;
 
 public interface Subject {
-	public void request();
-	public void noProxyRequest();
+    public void request();
+
+    public void noProxyRequest();
 }

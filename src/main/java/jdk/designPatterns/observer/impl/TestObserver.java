@@ -1,8 +1,7 @@
-package main.java.jdk.designPatterns.observer.impl;
+package jdk.designPatterns.observer.impl;
 
+import jdk.designPatterns.observer.Observer;
 import org.junit.Test;
-
-import main.java.jdk.designPatterns.observer.Observer;
 
 /**
  * 观察者模式(Observer)
@@ -13,18 +12,19 @@ import main.java.jdk.designPatterns.observer.Observer;
  * 适用场景：
  * 观察者模式，用于存在一对多依赖关系的对象间，当被依赖者变化时，通知依赖者全部进行更新。因此，被依赖者，应该有添加/删除依赖者的方法，
  * 且可以将添加的依赖者放到一个容器中；且有一个方法去通知依赖者进行更新。
+ *
  * @author Administrator
  */
 public class TestObserver {
-	
-	@Test
-	public void test() {
-		Lixi lixi = new Lixi();
-		Observer observer = new PersonBankMoney("张三", 1000d, lixi);
-		lixi.addObserver(observer);
-		lixi.setLixi(2d);
-		System.out.println(observer.toString());
-		lixi.setLixi(3d);
-		System.out.println(observer.toString());
-	}
+
+    @Test
+    public void test() {
+        Lixi lixi = new Lixi();
+        Observer observer = new PersonBankMoney("张三", 1000d, lixi);
+        lixi.addObserver(observer);
+        lixi.setLixi(2d);
+        System.out.println(observer.toString());
+        lixi.setLixi(3d);
+        System.out.println(observer.toString());
+    }
 }

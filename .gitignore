@@ -1,0 +1,21 @@
+# Created by .ignore support plugin (hsz.mobi)
+.gitignore
+.idea/compiler.xml
+.idea/encodings.xml
+.idea/inspectionProfiles/
+.idea/misc.xml
+.idea/modules.xml
+.idea/workspace.xml
+JavaDemo.iml
+src/jdk/
+src/main/java/jdk/java8/
+src/main/java/jdk/stream/ForEachReturn.java
+target/classes/META-INF/MANIFEST.MF
+target/classes/META-INF/maven/
+target/classes/jdk/
+target/classes/main/java/jdk/Lambda/
+target/classes/main/java/jdk/NIO/
+target/classes/main/java/jdk/java8/
+target/classes/main/java/jdk/stream/
+target/classes/main/java/poi/WordDemo.class
+target/test-classes/

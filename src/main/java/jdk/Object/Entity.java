@@ -1,16 +1,17 @@
-package main.java.jdk.Object;
+package jdk.Object;
 
 public class Entity {
-	private Long num;
-	public Entity(Long num) {
-		this.num = num;
-	}
+    private Long num;
 
-	public Long getNum() {
-		return num;
-	}
+    public Entity(Long num) {
+        this.num = num;
+    }
 
-	public void setNum(Long num) {
-		this.num = num;
-	}
+    public Long getNum() {
+        return num;
+    }
+
+    public void setNum(Long num) {
+        this.num = num;
+    }
 }

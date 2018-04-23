@@ -1,5 +1,5 @@
-package main.java.jdk.designPatterns.proxy.staticProxy;
+package jdk.designPatterns.proxy.staticProxy;
 
 public abstract class Subject {
-	public abstract void request();
+    public abstract void request();
 }

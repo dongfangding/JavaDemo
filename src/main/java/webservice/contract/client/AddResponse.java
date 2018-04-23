@@ -1,5 +1,5 @@
 
-package main.java.webservice.contract.client;
+package webservice.contract.client;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -8,9 +8,9 @@ import javax.xml.bind.annotation.XmlType;
 
 /**
  * <p>Java class for addResponse complex type.
- * 
+ *
  * <p>The following schema fragment specifies the expected content contained within this class.
- * 
+ *
  * <pre>
  * &lt;complexType name="addResponse">
  *   &lt;complexContent>
@@ -22,12 +22,10 @@ import javax.xml.bind.annotation.XmlType;
  *   &lt;/complexContent>
  * &lt;/complexType>
  * </pre>
- * 
- * 
  */
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "addResponse", propOrder = {
-    "addResult"
+        "addResult"
 })
 public class AddResponse {
 
@@ -35,7 +33,6 @@ public class AddResponse {
 
     /**
      * Gets the value of the addResult property.
-     * 
      */
     public int getAddResult() {
         return addResult;
@@ -43,7 +40,6 @@ public class AddResponse {
 
     /**
      * Sets the value of the addResult property.
-     * 
      */
     public void setAddResult(int value) {
         this.addResult = value;

@@ -1,46 +1,48 @@
-package main.java.webservice.jax.soap;
+package webservice.jax.soap;
 
-import java.util.ArrayList;
-import java.util.List;
+
+import webservice.entity.User;
 
 import javax.jws.HandlerChain;
 import javax.jws.WebService;
+import java.util.ArrayList;
+import java.util.List;
 
-import main.java.webservice.entity.User;
 
-@WebService(endpointInterface="com.java.webservice.jax.soap.UserService")
-@HandlerChain(file="service-handler-chain.xml")
+@WebService(endpointInterface = "webservice.jax.soap.UserService")
+@HandlerChain(file = "service-handler-chain.xml")
 public class UserServiceImpl implements UserService {
-	private static List<User> users = new ArrayList<User>();
-	
-	public UserServiceImpl() {
-		users.add(new User(1,"admin","管理員","111111"));
-	}
+    private static List<User> users = new ArrayList<User>();
 
-	@Override
-	public int add(int a, int b) {
-		System.out.println("a+b="+(a+b));
-		return a+b;
-	}
+    public UserServiceImpl() {
+        users.add(new User(1, "admin", "管理員", "111111"));
+    }
 
-	@Override
-	public User addUser(User user) {
-		users.add(user);
-		return user;
-	}
+    @Override
+    public int add(int a, int b) {
+        System.out.println("a+b=" + (a + b));
+        return a + b;
+    }
 
-	@Override
-	public User login(String username, String password) throws UserException{
-		for(User user:users) {
-			if(username.equals(user.getUsername())&&password.equals(user.getPassword()))
-				return user;
-		}
-		throw new UserException("用户名或密码错误！");
-	}
+    @Override
+    public User addUser(User user) {
+        users.add(user);
+        return user;
+    }
 
-	@Override
-	public List<User> list() {
-		return users;
-	}
+    @Override
+    public User login(String username, String password) throws UserException {
+        for (User user : users) {
+            if (username.equals(user.getUsername()) && password.equals(user.getPassword())) {
+                return user;
+            }
+        }
+        throw new UserException("用户名或密码错误！");
+    }
+
+    @Override
+    public List<User> list() {
+        return users;
+    }
 
 }

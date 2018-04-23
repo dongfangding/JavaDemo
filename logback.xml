@@ -1,29 +1,29 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <configuration>
-	 
-	<property name = "logBase" value = "${catalina.home:-.}/logs/javaDemo" /> 
-	<!-- 控制台输出 -->
-	<appender name = "STDOUT" class = "ch.qos.logback.core.ConsoleAppender">
-		<encoder>
-			<pattern>%-5d{yyyy-MM-dd HH:mm:ss} [%thread] [%relative] %-5level %class{20}.%M:%L - %m%n</pattern>
-			<!-- <pattern>%d{yyyy-MM-dd HH:mm:ss}</pattern> -->
-		</encoder>
-	</appender>
-	
-	<!-- 文件输出  -->
-	<appender name = "FILE" class = "ch.qos.logback.core.rolling.RollingFileAppender">
-		<rollingPolicy class = "ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-			<fileNamePattern>${logBase}%d{yyyy-MM-dd}.log</fileNamePattern>
-			<MaxHistory>30</MaxHistory>
-		</rollingPolicy>
-		<encoder>
-			<pattern>%-5d{yyyy-MM-dd HH:mm:ss} [%thread] [%relative] %-5level %class{20}.%M:%L - %m%n</pattern>
-		</encoder>
-	</appender>
-	
-	<root level="INFO">
-		<appender-ref ref="STDOUT" />
-		<appender-ref ref="FILE" />
-	</root>
-	
+
+    <property name="logBase" value="${catalina.home:-.}/logs/javaDemo"/>
+    <!-- 控制台输出 -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%-5d{yyyy-MM-dd HH:mm:ss} [%thread] [%relative] %-5level %class{20}.%M:%L - %m%n</pattern>
+            <!-- <pattern>%d{yyyy-MM-dd HH:mm:ss}</pattern> -->
+        </encoder>
+    </appender>
+
+    <!-- 文件输出  -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${logBase}%d{yyyy-MM-dd}.log</fileNamePattern>
+            <MaxHistory>30</MaxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%-5d{yyyy-MM-dd HH:mm:ss} [%thread] [%relative] %-5level %class{20}.%M:%L - %m%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="FILE"/>
+    </root>
+
 </configuration>

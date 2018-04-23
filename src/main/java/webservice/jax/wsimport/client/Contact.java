@@ -1,5 +1,5 @@
 
-package main.java.webservice.jax.wsimport.client;
+package webservice.jax.wsimport.client;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -8,9 +8,9 @@ import javax.xml.bind.annotation.XmlType;
 
 /**
  * <p>Java class for contact complex type.
- * 
+ *
  * <p>The following schema fragment specifies the expected content contained within this class.
- * 
+ *
  * <pre>
  * &lt;complexType name="contact">
  *   &lt;complexContent>
@@ -23,13 +23,11 @@ import javax.xml.bind.annotation.XmlType;
  *   &lt;/complexContent>
  * &lt;/complexType>
  * </pre>
- * 
- * 
  */
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "contact", propOrder = {
-    "str1",
-    "str2"
+        "str1",
+        "str2"
 })
 public class Contact {
 
@@ -38,11 +36,9 @@ public class Contact {
 
     /**
      * Gets the value of the str1 property.
-     * 
-     * @return
-     *     possible object is
-     *     {@link String }
-     *     
+     *
+     * @return possible object is
+     * {@link String }
      */
     public String getStr1() {
         return str1;
@@ -50,11 +46,9 @@ public class Contact {
 
     /**
      * Sets the value of the str1 property.
-     * 
-     * @param value
-     *     allowed object is
-     *     {@link String }
-     *     
+     *
+     * @param value allowed object is
+     *              {@link String }
      */
     public void setStr1(String value) {
         this.str1 = value;
@@ -62,11 +56,9 @@ public class Contact {
 
     /**
      * Gets the value of the str2 property.
-     * 
-     * @return
-     *     possible object is
-     *     {@link String }
-     *     
+     *
+     * @return possible object is
+     * {@link String }
      */
     public String getStr2() {
         return str2;
@@ -74,11 +66,9 @@ public class Contact {
 
     /**
      * Sets the value of the str2 property.
-     * 
-     * @param value
-     *     allowed object is
-     *     {@link String }
-     *     
+     *
+     * @param value allowed object is
+     *              {@link String }
      */
     public void setStr2(String value) {
         this.str2 = value;

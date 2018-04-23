@@ -1,5 +1,5 @@
-package main.java.jdk.designPatterns.iterator;
+package jdk.designPatterns.iterator;
 
 public interface IteratorController<T> {
-	public Iterator<T> createIterator();
+    public Iterator<T> createIterator();
 }

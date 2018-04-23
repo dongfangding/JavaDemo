@@ -1,9 +1,10 @@
-package main.java.jdk.designPatterns.strategy;
+package jdk.designPatterns.strategy;
+
 /**
  * 叫的行为
- * @author Administrator
  *
+ * @author Administrator
  */
 public interface QuackBehavior {
-	public void quack();
+    public void quack();
 }

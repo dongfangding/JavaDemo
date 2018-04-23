@@ -1,17 +1,15 @@
-package main.java.jdk.tool;
+package jdk.tool;
 
 public class JDBCTest {
 
-	/**右键直接 run application
-	 * 
-	 * 
-	 * 
-	 * 
-	 * @param args
-	 */
+    /**
+     * 右键直接 run application
+     *
+     * @param args
+     */
 
-	public static void main(String[] args) {
-		MyWindow win = new MyWindow();
-	}
+    public static void main(String[] args) {
+        MyWindow win = new MyWindow();
+    }
 
 }

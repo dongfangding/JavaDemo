@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- 引入的固定写法 !DOCTYPE后跟根节点 -->
 <!DOCTYPE teacher SYSTEM "teacher.dtd">
-<teacher id = "t1">
-	<teaName>ddf</teaName>
-	<teaSex>男</teaSex>
-	<teaEmail>ddf@qq.com</teaEmail>
-	<teaTel>12200</teaTel>
-	<teaAddress>上海市</teaAddress>
-	<teaBorn>1970-12-23</teaBorn>
-	<students>
-		<student>
-			<stuName>zhangsan</stuName>
-			<stuTel>120</stuTel>
-			<stuEmail>zhangsan@qq.com</stuEmail>
-		</student>
-	</students>
+<teacher id="t1">
+    <teaName>ddf</teaName>
+    <teaSex>男</teaSex>
+    <teaEmail>ddf@qq.com</teaEmail>
+    <teaTel>12200</teaTel>
+    <teaAddress>上海市</teaAddress>
+    <teaBorn>1970-12-23</teaBorn>
+    <students>
+        <student>
+            <stuName>zhangsan</stuName>
+            <stuTel>120</stuTel>
+            <stuEmail>zhangsan@qq.com</stuEmail>
+        </student>
+    </students>
 </teacher>

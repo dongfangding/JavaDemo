@@ -1,5 +1,5 @@
 
-package main.java.webservice.contract.client;
+package webservice.contract.client;
 
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.annotation.XmlElementDecl;
@@ -8,18 +8,17 @@ import javax.xml.namespace.QName;
 
 
 /**
- * This object contains factory methods for each 
- * Java content interface and Java element interface 
- * generated in the main.java.webservice.contract.client package. 
- * <p>An ObjectFactory allows you to programatically 
- * construct new instances of the Java representation 
- * for XML content. The Java representation of XML 
- * content can consist of schema derived interfaces 
- * and classes representing the binding of schema 
- * type definitions, element declarations and model 
- * groups.  Factory methods for each of these are 
+ * This object contains factory methods for each
+ * Java content interface and Java element interface
+ * generated in the main.java.webservice.contract.client package.
+ * <p>An ObjectFactory allows you to programatically
+ * construct new instances of the Java representation
+ * for XML content. The Java representation of XML
+ * content can consist of schema derived interfaces
+ * and classes representing the binding of schema
+ * type definitions, element declarations and model
+ * groups.  Factory methods for each of these are
  * provided in this class.
- * 
  */
 @XmlRegistry
 public class ObjectFactory {
@@ -33,14 +32,12 @@ public class ObjectFactory {
 
     /**
      * Create a new ObjectFactory that can be used to create new instances of schema derived classes for package: main.java.webservice.contract.client
-     * 
      */
     public ObjectFactory() {
     }
 
     /**
      * Create an instance of {@link AddResponse }
-     * 
      */
     public AddResponse createAddResponse() {
         return new AddResponse();
@@ -48,7 +45,6 @@ public class ObjectFactory {
 
     /**
      * Create an instance of {@link ServiceExceptionType }
-     * 
      */
     public ServiceExceptionType createServiceExceptionType() {
         return new ServiceExceptionType();
@@ -56,7 +52,6 @@ public class ObjectFactory {
 
     /**
      * Create an instance of {@link DivideRequest }
-     * 
      */
     public DivideRequest createDivideRequest() {
         return new DivideRequest();
@@ -64,7 +59,6 @@ public class ObjectFactory {
 
     /**
      * Create an instance of {@link AuthInfo }
-     * 
      */
     public AuthInfo createAuthInfo() {
         return new AuthInfo();
@@ -72,7 +66,6 @@ public class ObjectFactory {
 
     /**
      * Create an instance of {@link AddRequest }
-     * 
      */
     public AddRequest createAddRequest() {
         return new AddRequest();
@@ -80,7 +73,6 @@ public class ObjectFactory {
 
     /**
      * Create an instance of {@link DivideResponse }
-     * 
      */
     public DivideResponse createDivideResponse() {
         return new DivideResponse();
@@ -88,7 +80,6 @@ public class ObjectFactory {
 
     /**
      * Create an instance of {@link JAXBElement }{@code <}{@link DivideResponse }{@code >}}
-     * 
      */
     @XmlElementDecl(namespace = "http://www.example.org/myService/", name = "divideResponse")
     public JAXBElement<DivideResponse> createDivideResponse(DivideResponse value) {
@@ -97,7 +88,6 @@ public class ObjectFactory {
 
     /**
      * Create an instance of {@link JAXBElement }{@code <}{@link AddRequest }{@code >}}
-     * 
      */
     @XmlElementDecl(namespace = "http://www.example.org/myService/", name = "addRequest")
     public JAXBElement<AddRequest> createAddRequest(AddRequest value) {
@@ -106,7 +96,6 @@ public class ObjectFactory {
 
     /**
      * Create an instance of {@link JAXBElement }{@code <}{@link DivideRequest }{@code >}}
-     * 
      */
     @XmlElementDecl(namespace = "http://www.example.org/myService/", name = "divideRequest")
     public JAXBElement<DivideRequest> createDivideRequest(DivideRequest value) {
@@ -115,7 +104,6 @@ public class ObjectFactory {
 
     /**
      * Create an instance of {@link JAXBElement }{@code <}{@link ServiceExceptionType }{@code >}}
-     * 
      */
     @XmlElementDecl(namespace = "http://www.example.org/myService/", name = "serviceException")
     public JAXBElement<ServiceExceptionType> createServiceException(ServiceExceptionType value) {
@@ -124,7 +112,6 @@ public class ObjectFactory {
 
     /**
      * Create an instance of {@link JAXBElement }{@code <}{@link AuthInfo }{@code >}}
-     * 
      */
     @XmlElementDecl(namespace = "http://www.example.org/myService/", name = "authInfo")
     public JAXBElement<AuthInfo> createAuthInfo(AuthInfo value) {
@@ -133,7 +120,6 @@ public class ObjectFactory {
 
     /**
      * Create an instance of {@link JAXBElement }{@code <}{@link AddResponse }{@code >}}
-     * 
      */
     @XmlElementDecl(namespace = "http://www.example.org/myService/", name = "addResponse")
     public JAXBElement<AddResponse> createAddResponse(AddResponse value) {

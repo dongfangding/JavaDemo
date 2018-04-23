@@ -1,5 +1,5 @@
-package main.java.jdk.designPatterns.flyWeight;
+package jdk.designPatterns.flyWeight;
 
 public interface Car {
-	public void showCarName();
+    public void showCarName();
 }

@@ -1,9 +1,9 @@
-package main.java.jdk.designPatterns.flyWeight;
+package jdk.designPatterns.flyWeight;
 
 public class TruckCar implements Car {
-	@Override
-	public void showCarName() {
-		System.out.println("this is a TruckCar!");
-	}
+    @Override
+    public void showCarName() {
+        System.out.println("this is a TruckCar!");
+    }
 
 }

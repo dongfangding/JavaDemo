@@ -1,28 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- xmlns对应这schema文件的targetNamespace，必须指定xsi:schemaLocation，与targetNamespace一致
-	，如果需要在eclipse中有提示，需要在配置文件中XML中的category中引入该schema
- -->
-<teacher xmlns="http://www.example.org/teacher" 
-		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-		xsi:schemaLocation="http://www.example.org/teacher
+<!-- xmlns对应这schema文件的targetNamespace，必须指定xsi:schemaLocation，与targetNamespace一致 
+	，如果需要在eclipse中有提示，需要在配置文件中XML中的category中引入该schema -->
+<teacher xmlns="http://www.example.org/teacher" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://www.example.org/teacher
 		http://www.example.org/teacher">
-	
-	<teaName>ddf</teaName>
-	<teaSex>男</teaSex>
-	<teaEmail>ddf@qq.com</teaEmail>
-	<teaTel>18356784598</teaTel>
-	<teaAddress>上海市</teaAddress>
-	<teaBorn>1992-12-23</teaBorn>
-	<students>
-		<student id="1">
-			<stuName>丁东方</stuName>
-			<stuTel>1212</stuTel>
-			<stuEmail>dingdongfang@qq.com</stuEmail>
-		</student>
-		<student id="2">
-			<stuName>丁东方1</stuName>
-			<stuTel>1212222</stuTel>
-			<stuEmail>dongfang@qq.com</stuEmail>
-		</student>
-	</students>
+
+    <teaName>ddf</teaName>
+    <teaSex>男</teaSex>
+    <teaEmail>ddf@qq.com</teaEmail>
+    <teaTel>18356784598</teaTel>
+    <teaAddress>上海市</teaAddress>
+    <teaBorn>1992-12-23</teaBorn>
+    <students>
+        <student id="1">
+            <stuName>丁东方</stuName>
+            <stuTel>1212</stuTel>
+            <stuEmail>dingdongfang@qq.com</stuEmail>
+        </student>
+        <student id="2">
+            <stuName>丁东方1</stuName>
+            <stuTel>1212222</stuTel>
+            <stuEmail>dongfang@qq.com</stuEmail>
+        </student>
+    </students>
 </teacher>
