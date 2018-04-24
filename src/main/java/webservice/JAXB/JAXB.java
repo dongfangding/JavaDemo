@@ -1,15 +1,13 @@
 package webservice.JAXB;
 
-import java.io.StringReader;
+import org.junit.Test;
+import webservice.entity.Student;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
-
-import org.junit.Test;
-
-import main.java.webservice.entity.Student;
+import java.io.StringReader;
 
 public class JAXB {
 

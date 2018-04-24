@@ -12,6 +12,6 @@ public class TestMain {
         Role soldier = new SoldierRole();
         soldier.display();
         soldier.performAattack();
-        soldier.setAttackBehavior(new main.java.jdk.designPatterns.strategy.test.impl.IronSwordAttackBehavior());
+        soldier.setAttackBehavior(new IronSwordAttackBehavior());
     }
 }

@@ -21,7 +21,7 @@ public class TestFlyWeight {
             car.showCarName();
             Car car1 = CarFlyWeightFactory.getCar(FordCar.class);
             car1.showCarName();
-            Car car2 = CarFlyWeightFactory.getCar(main.java.jdk.designPatterns.flyWeight.TruckCar.class);
+            Car car2 = CarFlyWeightFactory.getCar(TruckCar.class);
             car2.showCarName();
             System.out.println("car == car1:" + (car.equals(car1)));
             System.out.println("连接池内的连接数量为：" + CarFlyWeightFactory.getCarPoolNum());

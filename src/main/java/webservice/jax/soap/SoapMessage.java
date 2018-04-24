@@ -1,31 +1,23 @@
 package webservice.jax.soap;
 
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
+import org.junit.Test;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import webservice.entity.User;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.namespace.QName;
 import javax.xml.rpc.soap.SOAPFaultException;
-import javax.xml.soap.MessageFactory;
-import javax.xml.soap.SOAPBody;
-import javax.xml.soap.SOAPBodyElement;
-import javax.xml.soap.SOAPElement;
-import javax.xml.soap.SOAPEnvelope;
-import javax.xml.soap.SOAPException;
-import javax.xml.soap.SOAPMessage;
-import javax.xml.soap.SOAPPart;
+import javax.xml.soap.*;
 import javax.xml.ws.Dispatch;
 import javax.xml.ws.Service;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 
-import org.junit.Test;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-
-import main.java.webservice.entity.User;
 
 /**
  * 手动模拟发送SOAP消息，本类依赖com.java.webservice.jax.source.NumberHelperService的发布
