@@ -1,6 +1,6 @@
 package jdk.juc;
 
-/*
+/**
  * 生产者和消费者案例
  */
 public class TestProductorAndConsumer {

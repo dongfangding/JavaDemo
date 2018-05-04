@@ -1,6 +1,6 @@
 package jdk.juc;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -87,16 +87,17 @@ class SyncMapTask implements Runnable {
         String random = new Random().nextInt() + "";
         try {
             System.out.println("before............");
-            for (Map.Entry<String, Object> m : map.entrySet()) {
+            /*for (Map.Entry<String, Object> m : map.entrySet()) {
                 System.out.print(Thread.currentThread().getName() + "取出: " + m.getKey() + ":" + m.getValue());
-            }
+            }*/
 
             /**
              * 不晓得这一行为什么会失效，如果不再线程任务中，却是可以正常循环出来，这里如果使用了forEach，
              * 看起来会直接终止所有的线程任务一样
+             * 经实验，应该是junit4的原因，使用Junit5正常
              *
              */
-            // map.forEach((k, v) -> System.out.println(Thread.currentThread().getName() + "取出" + k + "v"));
+            map.forEach((k, v) -> System.out.println(Thread.currentThread().getName() + "取出" + k + "v"));
             System.out.println(",存入" + random);
             map.put(random, random);
         } finally {

@@ -9,6 +9,8 @@ import java.util.Collection;
 
 import static org.junit.Assert.assertEquals;
 
+;
+
 /**
  * 制定带参数的运行器
  */

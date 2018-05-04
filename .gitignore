@@ -7,9 +7,6 @@
 .idea/modules.xml
 .idea/workspace.xml
 JavaDemo.iml
-src/jdk/
-src/main/java/jdk/java8/
-src/main/java/jdk/stream/ForEachReturn.java
 target/classes/META-INF/MANIFEST.MF
 target/classes/META-INF/maven/
 target/classes/jdk/

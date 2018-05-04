@@ -1,6 +1,6 @@
 package webservice.jax.soap;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;;
 import org.w3c.dom.NodeList;
 import webservice.entity.User;
 

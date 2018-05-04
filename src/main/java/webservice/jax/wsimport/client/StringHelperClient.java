@@ -1,6 +1,6 @@
 package webservice.jax.wsimport.client;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;;
 
 /**
  * 使用wsimport命令导入wsdl类

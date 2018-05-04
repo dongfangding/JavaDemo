@@ -7,7 +7,7 @@ import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveTask;
 import java.util.stream.LongStream;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;;
 
 public class TestForkJoinPool {
 	

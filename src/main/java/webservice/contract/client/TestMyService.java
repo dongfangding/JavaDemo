@@ -1,6 +1,6 @@
 package webservice.contract.client;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;;
 
 import javax.xml.namespace.QName;
 import javax.xml.rpc.soap.SOAPFaultException;

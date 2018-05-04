@@ -1,7 +1,7 @@
 package jdk.designPatterns.observer.impl;
 
 import jdk.designPatterns.observer.Observer;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;;
 
 /**
  * 观察者模式(Observer)
