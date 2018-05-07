@@ -63,10 +63,10 @@ class Task {
              * 如果不加这一行代码，有可能会出现A虽然唤醒B，但是A下次依然有争取执行权的能力，会再次获取，然后循环在
              * 这一块执行，有时间的不确定性，但是加了这一块最后会出现三个线程在沉睡，而导致进程不会结束
              */
-           // conditionA.await();
+            // conditionA.await();
         } /*catch (InterruptedException e) {
             e.printStackTrace();
-        } */finally {
+        } */ finally {
             lock.unlock();
         }
     }
@@ -88,7 +88,7 @@ class Task {
             //conditionB.await();
         } /*catch (InterruptedException e) {
             e.printStackTrace();
-        } */finally {
+        } */ finally {
             lock.unlock();
         }
     }
@@ -108,10 +108,10 @@ class Task {
             System.out.print("C");
             currTask = 1;
             conditionA.signal();
-           // conditionC.await();
+            // conditionC.await();
         }/* catch (InterruptedException e) {
             e.printStackTrace();
-        } */finally {
+        } */ finally {
             lock.unlock();
         }
     }

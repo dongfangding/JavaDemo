@@ -1,11 +1,12 @@
 package jdk.juc;
 
-import org.junit.jupiter.api.Test;;
+import org.junit.jupiter.api.Test;
 
 import java.util.LinkedList;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+
+;
 
 /**
  * CountDownLatch ：闭锁，在完成某些运算是，只有其他所有线程的运算全部完成，当前运算才继续执行
@@ -18,27 +19,20 @@ import java.util.concurrent.TimeUnit;
  */
 public class CountDownLatchTest {
 
-
     /**
      * 每一个线程都操作一次list来放入值，最后由主线程来循环一共产生的数据
      */
     @Test
-    public void testAddMap() {
-        CountDownLatch latch = new CountDownLatch(11);
+    public void testAddList() throws InterruptedException {
+        final CountDownLatch latch = new CountDownLatch(100);
         ListAdd ma = new ListAdd(latch);
-        for (int i = 1; i <= 10 ; i++) {
+        for (int i = 1; i <= 100; i++) {
             new Thread(ma, "线程" + i).start();
         }
 
-        try {
-            // 这个方法如果CountDownLatch初始的等待线程数量大于实际线程池数量，则会导致一直等待，进程不会结束
-            latch.await();
-            // 这个方法有一个最大等待值，如果等待时间超过指定值，则主程序恢复执行权。
-            latch.await(3, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        System.out.println("主线程取出数据.......................");
+        // 这个方法如果CountDownLatch初始的等待线程数量大于实际线程池数量，则会导致一直等待，进程不会结束
+        latch.await();
+        System.out.println("主线程取出数据,最终数据大小......................." + ListAdd.getLinkedList().size());
         ListAdd.getLinkedList().forEach(System.out::println);
     }
 
@@ -73,9 +67,9 @@ class LatchDemo implements Runnable {
 
     private CountDownLatch latch;
 
-	public LatchDemo(CountDownLatch latch) {
-		this.latch = latch;
-	}
+    public LatchDemo(CountDownLatch latch) {
+        this.latch = latch;
+    }
 
     @Override
     public void run() {
@@ -86,7 +80,7 @@ class LatchDemo implements Runnable {
                 }
             }
         } finally {
-             latch.countDown();
+            latch.countDown();
         }
     }
 }
@@ -94,6 +88,7 @@ class LatchDemo implements Runnable {
 class ListAdd implements Runnable {
     private static LinkedList<String> linkedList = new LinkedList<>();
     private CountDownLatch latch;
+
     ListAdd(CountDownLatch latch) {
         this.latch = latch;
     }
@@ -101,11 +96,11 @@ class ListAdd implements Runnable {
     @Override
     public void run() {
         try {
-            int random = new Random().nextInt(100);
-            System.out.println(Thread.currentThread().getName() + "放入：" + random);
-            linkedList.add(Thread.currentThread().getName() + "放入：" + random);
+            int random = new Random().nextInt(10000);
+            System.out.println(Thread.currentThread().getName() + "放入：" + linkedList.size() + "-"+ random);
+            linkedList.add(linkedList.size() + "-"+ random);
         } finally {
-           latch.countDown();
+            latch.countDown();
         }
     }
 

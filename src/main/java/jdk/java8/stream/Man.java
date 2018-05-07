@@ -2,26 +2,26 @@ package jdk.java8.stream;
 
 public class Man {
 
-	private Godness god;
+    private Godness god;
 
-	public Man() {
-	}
+    public Man() {
+    }
 
-	public Man(Godness god) {
-		this.god = god;
-	}
+    public Man(Godness god) {
+        this.god = god;
+    }
 
-	public Godness getGod() {
-		return god;
-	}
+    public Godness getGod() {
+        return god;
+    }
 
-	public void setGod(Godness god) {
-		this.god = god;
-	}
+    public void setGod(Godness god) {
+        this.god = god;
+    }
 
-	@Override
-	public String toString() {
-		return "Man [god=" + god + "]";
-	}
+    @Override
+    public String toString() {
+        return "Man [god=" + god + "]";
+    }
 
 }

@@ -1,10 +1,11 @@
 package json.jackson;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;;
+import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -14,8 +15,18 @@ import java.util.Map;
 public class ObjectMapperTest {
     private ObjectMapper objectMapper = new ObjectMapper();
     private String str = "{\"name\": \"ddf\", \"age\": \"25\", \"time\": \"2018-04-27\"}";
+    private String strs = "[{\"name\": \"ddf\", \"age\": \"25\", \"time\": \"2018-04-27\"}]";
 
 
+    @Test
+    public void test() throws IOException {
+        List<Map<String, Object>> mapList = objectMapper.readValue(strs, List.class);
+        mapList.forEach((map) -> {
+            map.forEach((k, v) -> {
+                System.out.println(k + ":" + v);
+            });
+        });
+    }
 
     @Test
     public void testReadToMap() throws Exception {
