@@ -33,7 +33,7 @@ public class CountDownLatchTest {
         // 这个方法如果CountDownLatch初始的等待线程数量大于实际线程池数量，则会导致一直等待，进程不会结束
         latch.await();
         System.out.println("主线程取出数据,最终数据大小......................." + ListAdd.getLinkedList().size());
-        ListAdd.getLinkedList().forEach(System.out::println);
+        // ListAdd.getLinkedList().forEach(System.out::println);
     }
 
 
@@ -99,6 +99,9 @@ class ListAdd implements Runnable {
             int random = new Random().nextInt(10000);
             System.out.println(Thread.currentThread().getName() + "放入：" + linkedList.size() + "-"+ random);
             linkedList.add(linkedList.size() + "-"+ random);
+            Thread.sleep(6000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         } finally {
             latch.countDown();
         }
