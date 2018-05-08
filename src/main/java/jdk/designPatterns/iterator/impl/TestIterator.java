@@ -3,7 +3,7 @@ package jdk.designPatterns.iterator.impl;
 import jdk.designPatterns.iterator.Iterator;
 import jdk.designPatterns.iterator.IteratorController;
 import jdk.designPatterns.iterator.Student;
-import org.junit.jupiter.api.Test;;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
