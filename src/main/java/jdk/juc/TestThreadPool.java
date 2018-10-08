@@ -56,16 +56,16 @@ public class TestThreadPool {
         for (Future<Integer> future : list) {
             System.out.println(future.get());
         }
-		
-		
-		
+
+
+
 		/*ThreadPoolDemo tpd = new ThreadPoolDemo();
-		
+
 		//2. 为线程池中的线程分配任务
 		for (int i = 0; i < 10; i++) {
 			pool.submit(tpd);
 		}
-		
+
 		//3. 关闭线程池
 		pool.shutdown();*/
     }

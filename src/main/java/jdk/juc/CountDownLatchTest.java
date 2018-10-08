@@ -3,8 +3,9 @@ package jdk.juc;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Random;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.*;
 
 ;
 
@@ -61,6 +62,20 @@ public class CountDownLatchTest {
 
         System.out.println("耗费时间为：" + (end - start));
     }
+
+
+    /**
+     * 创建线程，让线程去执行任务，线程的创建有先后顺序，所以理论上先创建的线程会比后创建的线程更容易获得执行权。
+     * 现在要求必须所有的线程同时创建完成之后，然后发送一个指令才同时去竞争执行权
+     */
+    @Test
+    public void atTheSameTimeStart() throws ExecutionException, InterruptedException {
+        CountDownLatch countDownLatch = new CountDownLatch(500);
+        ExecutorService executorService = Executors.newFixedThreadPool(8);
+        LinkedList<Integer> elseNum = new LinkedList<>();
+        for (int i = 0; i <= 500; i ++) {
+        }
+    }
 }
 
 class LatchDemo implements Runnable {
@@ -109,5 +124,35 @@ class ListAdd implements Runnable {
 
     public static LinkedList<String> getLinkedList() {
         return linkedList;
+    }
+}
+
+class SameTimeTask implements Callable<LinkedList<String>> {
+    private volatile Integer totalTicketNum;
+    private CountDownLatch countDownLatch = new CountDownLatch(1);
+    private CountDownLatch beginCount;
+    private LinkedList<String> linkedList;
+    private volatile Integer currTicket;
+    public SameTimeTask(Integer totalTicketNum, CountDownLatch beginCount, LinkedList<String> linkedList) {
+        this.totalTicketNum = totalTicketNum;
+        this.beginCount = beginCount;
+        this.linkedList = linkedList;
+    }
+
+    @Override
+    public LinkedList<String> call() {
+        if (totalTicketNum == 0) {
+            linkedList.add(Thread.currentThread().getName() + "没票了。。");
+        }
+        totalTicketNum --;
+        currTicket ++;
+        linkedList.add(Thread.currentThread().getName() + "抢到第" + currTicket + "张票，还剩" + totalTicketNum);
+        return linkedList;
+    }
+
+
+    public synchronized void clear() {
+        System.out.println(Thread.currentThread().getName() + "执行放行操作！");
+        countDownLatch.countDown();
     }
 }

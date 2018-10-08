@@ -55,7 +55,6 @@ class Task {
                     e.printStackTrace();
                 }
             }
-            // System.out.println(Thread.currentThread().getName() + "| A");
             System.out.print("A");
             currTask = 2;
             conditionB.signal();
@@ -81,7 +80,6 @@ class Task {
                     e.printStackTrace();
                 }
             }
-            // System.out.println(Thread.currentThread().getName() + "| B");
             System.out.print("B");
             currTask = 3;
             conditionC.signal();
