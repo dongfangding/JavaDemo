@@ -34,6 +34,8 @@ public class UrlFileSegmentDownload {
 
     private AtomicInteger currentSuccessSegment = new AtomicInteger();
 
+    private Map<Integer, List<DownloadTask>> doneTaskMap = new ConcurrentHashMap<>();
+
     /**
      * 每次下载多少大小,在源文件大小基础上切分,单位byte;
      * 如100MB的文件，每次下载10MB，在5台服务器上分段切分；对应的fileSize=100MB, partSize=10MB, segment=5
@@ -281,40 +283,48 @@ public class UrlFileSegmentDownload {
         demonRetry();
         //  以最终可用连接数来平分下载量
         final int connectionSize = connectionMap.size();
-        long average;
-        if (connectionSize >= totalSegment) {
-            average = fileSize / connectionSize;
-        } else {
-            average = partSize / connectionSize;
-        }
+        // 可用连接下载的线程是在partSize的基础上再切分的
+        long average = partSize / connectionSize;
         String serverPath;
         HttpURLConnection connection;
         /**
          * 分片大小, 在partSize上进行切分;
          */
         int currSegment = 0;
-        print(String.format("总文件大小[%d]， 每段截取大小[%d], 共分段[%d]次", fileSize, partSize, totalSegment));
         long startSize, endSize = 0;
-        // 只有下载成功才调用countDown
-        CountDownLatch countDownLatch = new CountDownLatch(totalSegment);
-        while (currSegment < totalSegment && !failureFlag) {
+
+        // 判断最终需要多少个线程来完成下载任务
+        int taskCount;
+        if (fileSize % average == 0) {
+            taskCount = (int) (fileSize / average);
+        } else {
+            taskCount = (int) (fileSize / average + 1);
+        }
+        print(String.format("总文件大小[%d]， 每段截取大小[%d], 共分段[%d]次, 可用连接数[%d]，最终需要切分成[%d]个子任务",
+                fileSize, partSize, totalSegment, connectionSize, taskCount));
+        CountDownLatch countDownLatch = new CountDownLatch(taskCount);
+        int currTask = 0;
+        while (currSegment <= totalSegment && !failureFlag) {
+            currSegment ++;
             for (Map.Entry<String, HttpURLConnection> entry : connectionMap.entrySet()) {
-                if (currSegment >= totalSegment) {
+                currTask ++;
+                if (currSegment > totalSegment) {
                     break;
                 }
-                currSegment ++;
                 serverPath = entry.getKey();
                 // 从0开始其实是从第一个字节开始下载， 从20开始，其实是从21个字节开始；所以值虽然与上一次的endSize相同，但取值不同
                 startSize = endSize;
                 endSize = (startSize + average) - 1;
-                if (currSegment == totalSegment) {
+                if (currTask == taskCount) {
                     endSize = fileSize;
                 }
                 DownloadTask downloadTask = new DownloadTask(serverPath, startSize, endSize, countDownLatch);
+                // FIXME
+                downloadTask.setPart(currSegment, connectionSize);
                 print(String.format("currSegment: [%s]，下载任务: %s)", currSegment, downloadTask));
                 downloadExecutorService.execute(downloadTask);
                 // 如果可用连接数大于总分段数，那么其实循环一次可用连接就处理完了；不需要重复分段
-                if (totalSegment == 1) {
+                if (endSize == fileSize) {
                     break;
                 }
             }
@@ -402,6 +412,14 @@ public class UrlFileSegmentDownload {
      * 下载任务
      */
     class DownloadTask implements Runnable {
+        /**
+         * 需求想要多个线程如果下完其中一个partSize的话，需要打印第i段下载完成；实际上这个根本没有意义；
+         * 最初线程分配好的任务最终也不一定就是最初的这几个线程完成的，而且先后顺序也没法保证，就算打印出来，又没啥用；
+         * 而且分配任务是按照连接数来的，异常情况下，连接数是个变数；现在只能临时记录下分配任务时的这几个属性;
+         * 只能每完成（总数除连接数）个就打印++i次，
+         */
+        private int segmentNum;
+        private int currConnectionSize;
         /** 资源地址 */
         private String serverPath;
         /** 起始字节 */
@@ -423,6 +441,37 @@ public class UrlFileSegmentDownload {
             this.startSize = startSize;
             this.endSize = endSize;
             this.countDownLatch = countDownLatch;
+        }
+
+        /**
+         * 单独T出来一个方法来做这个处理，将来不需要了，直接去掉这块就好
+         * @param segmentNum
+         * @param currConnectionSize
+         */
+        public void setPart(int segmentNum, int currConnectionSize) {
+            this.segmentNum = segmentNum;
+            this.currConnectionSize = currConnectionSize;
+        }
+
+
+        /**
+         * 这样写，不保证顺序，按照分配任务的时候的分段来打印；如果第三段的任务先完成，就先打印第三段完成，而不是第一段完成
+         */
+        private void addPartAndPrint() {
+            try {
+                lock.lock();
+                List<DownloadTask> tempList = doneTaskMap.get(this.segmentNum);
+                if (tempList == null) {
+                    tempList = new ArrayList<>();
+                }
+                tempList.add(this);
+                if (tempList.size() == this.currConnectionSize) {
+                    print(String.format("第[%d]块下载完成", this.segmentNum));
+                }
+                doneTaskMap.put(this.segmentNum, tempList);
+            } finally {
+                lock.unlock();
+            }
         }
 
         @Override
@@ -535,13 +584,6 @@ public class UrlFileSegmentDownload {
                         raf.close();
                         status = 2;
                         print(String.format("任务 %s 下载完成，状态置为2", this));
-
-                        // FIXME 需求想要多个线程如果下完其中一个partSize的话，需要打印第i段下载完成；实际上这个根本没有意义；
-                        // 最初线程分配好的任务最终也不一定就是最初的这几个线程完成的，而且先后顺序也没法保证，就算打印出来，又没啥用；
-                        int i = currentSuccessSegment.incrementAndGet();
-                        if (i % connectionMap.size() == 0) {
-                            print(String.format("第%s块下载完成!", i / connectionMap.size()));
-                        }
                     } catch (Exception e) {
                         status = 0;
                         if (taskFailureTimes == 0) {
@@ -559,6 +601,7 @@ public class UrlFileSegmentDownload {
                         addFailureTask(this);
                     }
                 } else {
+                    addPartAndPrint();
                     if (taskFailureTimes == 0) {
                         countDownLatch.countDown();
                     }
@@ -568,9 +611,9 @@ public class UrlFileSegmentDownload {
     }
 
     public static void main(String[] args) {
-        String[] paths = {"http://localhost:8080/docs/aio.html", "http://localhost:8082/docs/apr.html"};
+        String[] paths = {"http://localhost:8080/docs/aio.html", "http://localhost:8082/docs/aio.html"};
         String downloadPath = System.getProperty("user.dir") + File.separator + "src" + File.separator + "main" + File.separator + "resources";
-        UrlFileSegmentDownload load = new UrlFileSegmentDownload(paths, downloadPath, 5 * 1024, 5, true);
+        UrlFileSegmentDownload load = new UrlFileSegmentDownload(paths, downloadPath, 5000 * 1024, 5, true);
         long before = System.currentTimeMillis();
         load.download();
         long endTime = System.currentTimeMillis();
