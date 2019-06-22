@@ -13,8 +13,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * 网络资源分片下载
- * 本来必须一个网络资源下载创建一个新的类，不能作为单例使用；
+ * 网络资源分片下载，还有本来不是作为多个服务器的不同资源在本地进行多线程下载；而是多个服务器都有一个相同的资源，然后使用多线程对不同服务器上进行分片下载；
+ * 每个服务器各下载一部分，最终合成一个最终的文件；
+ *
+ * 必须一个网络资源下载对应创建一个新的类，不能作为单例使用；
  * 其中用来作为监听重试队列的线程和用来处理下载任务的线程池最好初始化的时候传入两个全局的线程池来使用;
  *
  * @author dongfang.ding
@@ -27,6 +29,7 @@ public class UrlFileSegmentDownload {
      */
     private volatile long fileSize;
 
+    /** 是否开启打印输出 */
     private boolean isDebug;
 
     private AtomicInteger currentSuccessSegment = new AtomicInteger();
@@ -48,7 +51,7 @@ public class UrlFileSegmentDownload {
     private volatile boolean failureFlag = false;
 
     /**
-     * 服务器网络资源地址
+     * 服务器网络资源地址，必须是相同的资源在不同的服务器上
      */
     private String[] serverPaths;
 
@@ -57,7 +60,7 @@ public class UrlFileSegmentDownload {
      */
     private String downloadPath;
 
-
+    /** 用来停止重试线程循环的条件 */
     private volatile boolean demonRetryStop = false;
 
     /**
@@ -116,7 +119,7 @@ public class UrlFileSegmentDownload {
 
     UrlFileSegmentDownload(String[] serverPaths, String downloadPath, int partSize, int retryTimes, boolean isDebug) {
         this.serverPaths = serverPaths;
-        this.downloadPath = downloadPath;
+        this.downloadPath = downloadPath + File.separator + getFileName();
         this.partSize = partSize;
         this.downloadExecutorService = defaultDownloadExecutorService;
         this.retryExecutorService = defaultRetryExecutorService;
@@ -127,7 +130,7 @@ public class UrlFileSegmentDownload {
     UrlFileSegmentDownload(String[] serverPaths, String downloadPath, int partSize, int retryTimes,
                            ExecutorService downloadExecutorService, ExecutorService retryExecutorService, boolean isDebug) {
         this.serverPaths = serverPaths;
-        this.downloadPath = downloadPath;
+        this.downloadPath = downloadPath + File.separator + getFileName();
         this.partSize = partSize;
         this.downloadExecutorService = downloadExecutorService;
         this.retryExecutorService = retryExecutorService;
@@ -161,18 +164,23 @@ public class UrlFileSegmentDownload {
      *
      * @param connection 资源连接
      */
-    private void getRemoteFileSize(HttpURLConnection connection) {
+    private void getRemoteFileSize() {
         try {
-            lock.lock();
             while (this.fileSize == 0) {
-                String contentLength = connection.getHeaderField("Content-Length");
-                this.fileSize = Long.parseLong(contentLength);
-            }
-            // 计算分段数量
-            if (fileSize % partSize == 0) {
-                totalSegment = (int) (fileSize / partSize);
-            } else {
-                totalSegment = (int) (fileSize / partSize) + 1;
+                lock.lock();
+                if (connectionMap == null || connectionMap.isEmpty()) {
+                    checkAliveConnection();
+                }
+                connectionMap.forEach((serverPath, connection) -> {
+                    String contentLength = connection.getHeaderField("Content-Length");
+                    this.fileSize = Long.parseLong(contentLength);
+                });
+                // 计算分段数量
+                if (fileSize % partSize == 0) {
+                    totalSegment = (int) (fileSize / partSize);
+                } else {
+                    totalSegment = (int) (fileSize / partSize) + 1;
+                }
             }
         } finally {
             lock.unlock();
@@ -203,14 +211,13 @@ public class UrlFileSegmentDownload {
     /**
      * 心跳检测
      */
-    private void demonTask() {
+    private void heartCheck() {
         print("开始心跳检测");
         for (String serverPath : serverPaths) {
             try {
                 Map<String, String> properties = new HashMap<>();
                 HttpURLConnection connection = getConnection(serverPath, "HEAD", properties);
                 String date = connection.getHeaderField("date");
-                getRemoteFileSize(connection);
                 print(String.format("date[%s] from [%s]", date, serverPath));
                 final int responseCode = connection.getResponseCode();
                 if (connectionMap.containsKey(serverPath)) {
@@ -255,7 +262,7 @@ public class UrlFileSegmentDownload {
      * 检查可用的连接，提供重试
      */
     private void checkAliveConnection() {
-        demonTask();
+        heartCheck();
         if (connectionMap == null || connectionMap.isEmpty()) {
             if (failureTimes == retryTimes) {
                 throw new RuntimeException("没有可用的连接");
@@ -268,8 +275,8 @@ public class UrlFileSegmentDownload {
     }
 
     public String download() {
-        // 检查可用连接
-        checkAliveConnection();
+        // 获取远程文件大小
+        getRemoteFileSize();
         // 重试线程
         demonRetry();
         //  以最终可用连接数来平分下载量
@@ -292,7 +299,10 @@ public class UrlFileSegmentDownload {
         CountDownLatch countDownLatch = new CountDownLatch(totalSegment);
         while (currSegment < totalSegment && !failureFlag) {
             for (Map.Entry<String, HttpURLConnection> entry : connectionMap.entrySet()) {
-                currSegment++;
+                if (currSegment >= totalSegment) {
+                    break;
+                }
+                currSegment ++;
                 serverPath = entry.getKey();
                 // 从0开始其实是从第一个字节开始下载， 从20开始，其实是从21个字节开始；所以值虽然与上一次的endSize相同，但取值不同
                 startSize = endSize;
@@ -379,9 +389,11 @@ public class UrlFileSegmentDownload {
             }
             return true;
         } else {
-            downloadTask.countDownLatch.countDown();
-            print("调用countDown[" + System.currentTimeMillis() + "]");
+            // 下载失败标志，给主线程判断
             failureFlag = true;
+            print("最终重试下载失败，调用countDown[addFailureTask]");
+            // 如果最终重试失败了，则当前任务要把自己的countDown放行掉（测试时偶有出现，放行前的代码，竞争不过主线程？？）
+            downloadTask.countDownLatch.countDown();
             return false;
         }
     }
@@ -390,14 +402,15 @@ public class UrlFileSegmentDownload {
      * 下载任务
      */
     class DownloadTask implements Runnable {
+        /** 资源地址 */
         private String serverPath;
-
+        /** 起始字节 */
         private long startSize;
-
+        /** 终止字节 */
         private long endSize;
-
+        /** 任务重试失败次数，重试成功后被清0 */
         private int taskFailureTimes;
-
+        /** 用来阻塞主线程等待所有下载任务最终的下载结果 */
         private CountDownLatch countDownLatch;
 
         /**
@@ -436,36 +449,29 @@ public class UrlFileSegmentDownload {
                 run();
                 if (status == 2) {
                     taskFailureTimes = 0;
-                    countDownLatch.countDown();
-                    print("调用countDown[" + System.currentTimeMillis() + "]");
                     print(String.format("第一次重试成功, 当前任务： %s", this));
+                    countDownLatch.countDown();
                     return true;
                 } else {
                     addFailureTask(this);
-                    return false;
                 }
-            } else {
-                for (Map.Entry<String, HttpURLConnection> entry : connectionMap.entrySet()) {
-                    taskFailureTimes++;
-                    this.serverPath = entry.getKey();
-                    print(String.format("重试失败，转换服务器, 更改任务为 %s", this));
-                    run();
-                    if (status == 2) {
-                        print(String.format("转换服务器下载成功， 当前任务： %s", this));
-                        countDownLatch.countDown();
-                        print("调用countDown[" + System.currentTimeMillis() + "]");
-                        return true;
-                    } else {
-                        addFailureTask(this);
-                        return false;
-                    }
+            }
+            for (Map.Entry<String, HttpURLConnection> entry : connectionMap.entrySet()) {
+                taskFailureTimes++;
+                this.serverPath = entry.getKey();
+                print(String.format("重试失败，转换服务器, 更改任务为 %s", this));
+                run();
+                if (status == 2) {
+                    taskFailureTimes = 0;
+                    print(String.format("转换服务器下载成功， 当前任务： %s", this));
+                    countDownLatch.countDown();
+                    return true;
+                } else {
+                    addFailureTask(this);
                 }
             }
             // FIXME 重试失败要不要删除已经下载的数据？
-            if (taskFailureTimes > retryTimes) {
-                return false;
-            }
-            return true;
+            return taskFailureTimes <= retryTimes;
         }
 
         @Override
@@ -477,27 +483,27 @@ public class UrlFileSegmentDownload {
                 if (status != 2) {
                     // 只有第一次失败才添加到重试队列中，后续重试由重试方法处理
                     if (taskFailureTimes == 0) {
+                        print("第一次下载失败");
                         addFailureTask(this);
                     }
+                    return;
                 } else {
                     Thread.sleep(1500);
-                    countDownLatch.countDown();
+                    // 第一次成功直接就countDown，如果不是第一次则会由retry方法来调用该方法，retry里重试成功后会有一些处理，处理结束后再countDown；
+                    // 如果在这里就countDwon主线程被放行了，重试线程还在异步处理
+                    if (taskFailureTimes == 0) {
+                        print("调用countDown[run]");
+                        countDownLatch.countDown();
+                    }
                 }
             } catch (InterruptedException e) {
-                e.printStackTrace();
-                // 只有第一次失败才添加到重试队列中，后续重试由重试方法处理
-                if (taskFailureTimes == 0) {
-                    addFailureTask(this);
-                }
+
             }*/
             Map<String, String> properties = new HashMap<>(6);
             properties.put("Range", "bytes=" + startSize + "-" + endSize);
             try {
                 // 这样做是因为为了能够每写一部分数据就能看到，所以文件在每个任务中写完都调用了close方法，所以任务重复调用要重复初始化
-                if (new File(downloadPath + File.separator + getFileName()).exists()) {
-                    new File(downloadPath + File.separator + getFileName()).delete();
-                }
-                RandomAccessFile raf = new RandomAccessFile(downloadPath + File.separator + getFileName(), "rws");
+                RandomAccessFile raf = new RandomAccessFile(downloadPath, "rws");
                 print(String.format("%s从[%s]下载到[%s]", serverPath, startSize, endSize));
                 HttpURLConnection conn = getConnection(serverPath, "GET", properties);
                 if (CONNECTION_OK.contains(conn.getResponseCode())) {
@@ -529,12 +535,14 @@ public class UrlFileSegmentDownload {
                         raf.close();
                         status = 2;
                         print(String.format("任务 %s 下载完成，状态置为2", this));
+
+                        // FIXME 需求想要多个线程如果下完其中一个partSize的话，需要打印第i段下载完成；实际上这个根本没有意义；
+                        // 最初线程分配好的任务最终也不一定就是最初的这几个线程完成的，而且先后顺序也没法保证，就算打印出来，又没啥用；
                         int i = currentSuccessSegment.incrementAndGet();
                         if (i % connectionMap.size() == 0) {
                             print(String.format("第%s块下载完成!", i / connectionMap.size()));
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
                         status = 0;
                         if (taskFailureTimes == 0) {
                             addFailureTask(this);
@@ -543,10 +551,7 @@ public class UrlFileSegmentDownload {
                     }
                 }
             } catch (IOException e) {
-                // 只有第一次失败才添加到重试队列中，后续重试由重试方法处理
-                if (taskFailureTimes == 0) {
-                    addFailureTask(this);
-                }
+                e.printStackTrace();
             } finally {
                 if (status != 2) {
                     // 只有第一次失败才添加到重试队列中，后续重试由重试方法处理
@@ -554,16 +559,18 @@ public class UrlFileSegmentDownload {
                         addFailureTask(this);
                     }
                 } else {
-                    countDownLatch.countDown();
-                    print("调用countDown[" + System.currentTimeMillis() + "]");
+                    if (taskFailureTimes == 0) {
+                        countDownLatch.countDown();
+                    }
                 }
             }
         }
     }
 
     public static void main(String[] args) {
-        String[] paths = {"http://localhost:8080/docs/aio.html", "http://localhost:8081/docs/aio.html"};
-        UrlFileSegmentDownload load = new UrlFileSegmentDownload(paths, "D:\\workSpace\\JavaDemo\\src\\main\\resources", 2 * 1024, 5, true);
+        String[] paths = {"http://localhost:8080/docs/aio.html", "http://localhost:8082/docs/apr.html"};
+        String downloadPath = System.getProperty("user.dir") + File.separator + "src" + File.separator + "main" + File.separator + "resources";
+        UrlFileSegmentDownload load = new UrlFileSegmentDownload(paths, downloadPath, 5 * 1024, 5, true);
         long before = System.currentTimeMillis();
         load.download();
         long endTime = System.currentTimeMillis();
