@@ -9,7 +9,6 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -32,8 +31,7 @@ public class UrlFileSegmentDownload {
     /** 是否开启打印输出 */
     private boolean isDebug;
 
-    private AtomicInteger currentSuccessSegment = new AtomicInteger();
-
+    /** 已完成下载任务段 */
     private Map<Integer, List<DownloadTask>> doneTaskMap = new ConcurrentHashMap<>();
 
     /**
@@ -174,8 +172,12 @@ public class UrlFileSegmentDownload {
                     checkAliveConnection();
                 }
                 connectionMap.forEach((serverPath, connection) -> {
-                    String contentLength = connection.getHeaderField("Content-Length");
-                    this.fileSize = Long.parseLong(contentLength);
+                    try {
+                        if (this.fileSize == 0) {
+                            String contentLength = connection.getHeaderField("Content-Length");
+                            this.fileSize = Long.parseLong(contentLength);
+                        }
+                    } catch (Exception e) {}
                 });
                 // 计算分段数量
                 if (fileSize % partSize == 0) {
@@ -184,6 +186,8 @@ public class UrlFileSegmentDownload {
                     totalSegment = (int) (fileSize / partSize) + 1;
                 }
             }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         } finally {
             lock.unlock();
         }
@@ -281,18 +285,13 @@ public class UrlFileSegmentDownload {
         getRemoteFileSize();
         // 重试线程
         demonRetry();
-        //  以最终可用连接数来平分下载量
+        // 以最终可用连接数来平分下载量
         final int connectionSize = connectionMap.size();
         // 可用连接下载的线程是在partSize的基础上再切分的
         long average = partSize / connectionSize;
         String serverPath;
-        HttpURLConnection connection;
-        /**
-         * 分片大小, 在partSize上进行切分;
-         */
         int currSegment = 0;
         long startSize, endSize = 0;
-
         // 判断最终需要多少个线程来完成下载任务
         int taskCount;
         if (fileSize % average == 0) {
@@ -305,6 +304,7 @@ public class UrlFileSegmentDownload {
         CountDownLatch countDownLatch = new CountDownLatch(taskCount);
         int currTask = 0;
         while (currSegment <= totalSegment && !failureFlag) {
+            // 每段大小又需要可用连接数个线程来平均完成一个段的数据下载,所以不能在循环可用连接的时候递增这个值
             currSegment ++;
             for (Map.Entry<String, HttpURLConnection> entry : connectionMap.entrySet()) {
                 currTask ++;
@@ -319,7 +319,7 @@ public class UrlFileSegmentDownload {
                     endSize = fileSize;
                 }
                 DownloadTask downloadTask = new DownloadTask(serverPath, startSize, endSize, countDownLatch);
-                // FIXME
+                // FIXME 感觉这一块功能费力又没意义
                 downloadTask.setPart(currSegment, connectionSize);
                 print(String.format("currSegment: [%s]，下载任务: %s)", currSegment, downloadTask));
                 downloadExecutorService.execute(downloadTask);
@@ -412,12 +412,6 @@ public class UrlFileSegmentDownload {
      * 下载任务
      */
     class DownloadTask implements Runnable {
-        /**
-         * 需求想要多个线程如果下完其中一个partSize的话，需要打印第i段下载完成；实际上这个根本没有意义；
-         * 最初线程分配好的任务最终也不一定就是最初的这几个线程完成的，而且先后顺序也没法保证，就算打印出来，又没啥用；
-         * 而且分配任务是按照连接数来的，异常情况下，连接数是个变数；现在只能临时记录下分配任务时的这几个属性;
-         * 只能每完成（总数除连接数）个就打印++i次，
-         */
         private int segmentNum;
         private int currConnectionSize;
         /** 资源地址 */
@@ -444,6 +438,15 @@ public class UrlFileSegmentDownload {
         }
 
         /**
+         *
+         * 需求想要多个线程如果下完其中一个partSize的话，需要打印第i段下载完成；实际上这个根本没有意义；
+         * 最初线程分配好的任务最终也不一定就是最初的这几个线程完成的，而且先后顺序也没法保证，就算打印出来，又没啥用；
+         * 而且分配任务是按照连接数来的，异常情况下，连接数是个变数；现在只能临时记录下分配任务时的这几个属性;
+         *
+         * 两种效果，一种是每完成（总数除连接数）个就打印++i次，这样保证打印的第i段完成是顺序递增的
+         * 还有一种是按照最初任务分配的段来确定，当时分配的第几段，这几段的几个线程全部完成就打印这个段完成；但是由于线程调度
+         * 原因，这样可能会发生，显示第三段完成，然后才是第一段完成，目前采用的是这种方式
+         *
          * 单独T出来一个方法来做这个处理，将来不需要了，直接去掉这块就好
          * @param segmentNum
          * @param currConnectionSize
