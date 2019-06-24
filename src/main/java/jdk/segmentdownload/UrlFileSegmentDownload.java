@@ -364,10 +364,11 @@ public class UrlFileSegmentDownload {
                 }
                 // 如果不是最后一个任务，但却是每个分段的最后一个子任务，则把当前子任务的剩余大小指向endSize
                 else if (currTask % connectionSize == 0) {
-                    endSize = partSize - (average * (connectionSize - 1)) + endSize;
+//                    endSize = partSize - (average * (connectionSize - 1)) + endSize;
+                    endSize = partSize * currSegment;
                 } else {
 //                  // 如果不是最后一个任务，也不是每个分段的最后一个任务，则endSize就是正常的在上一个任务的结束点加上平均任务字节数即可
-                    endSize = (startSize + average) - 1;
+                    endSize = (startSize + average);
                 }
                 // 是否可以复用connectionMap里存的连接呢？但是如果异常切换服务器下载，又得重新根据serverPath获取，还得传入连接，因此暂时不准备这么做了
                 DownloadTask downloadTask = new DownloadTask(serverPath, startSize, endSize, countDownLatch);
@@ -541,8 +542,11 @@ public class UrlFileSegmentDownload {
                     tempList = new ArrayList<>();
                 }
                 tempList.add(this);
-                if (tempList.size() == this.currConnectionSize) {
-                    int andIncrement = doneTaskNum.incrementAndGet();
+                int andIncrement = doneTaskNum.incrementAndGet();
+                // FIXME 一次就分为打印有问题，后面修改
+                if (andIncrement == totalSegment) {
+                    print(String.format("第[%d]块下载完成, 当前实际共下载完成[%d]段", totalSegment, totalSegment));
+                } else if (tempList.size() == this.currConnectionSize) {
                     print(String.format("第[%d]块下载完成, 当前实际共下载完成[%d]段", this.segmentNum, andIncrement / this.currConnectionSize));
                 }
                 doneTaskMap.put(this.segmentNum, tempList);
@@ -672,15 +676,17 @@ public class UrlFileSegmentDownload {
     public static void main(String[] args) throws IOException {
         String source = "test.file";
         String[] paths = {"http://localhost:8080/docs/" + source, "http://localhost:8081/docs/" + source, "http://aaa.2121.com/"};
-//        String[] paths = {"http://47.88.102.56/" + source, "http://47.89.244.85/" + source, "http://47.89.209.42/" + source, "http://aaa.2121.com/"};
+//        String[] paths = {"http://47.88.102.56/" + source, "http://47.89.244.85/" + source, /*"http://47.89.209.42/" + source, */"http://aaa.2121.com/"};
         String downloadPath = System.getProperty("user.dir") + File.separator + "src" + File.separator + "main" + File.separator + "resources";
-        UrlFileSegmentDownload load = new UrlFileSegmentDownload(paths, downloadPath, 5002 * 1024 * 3, 5, true);
-        load.setConnectionTimeOut(500);
+        UrlFileSegmentDownload load = new UrlFileSegmentDownload(paths, downloadPath, 5002 * 1024 * 50, 5, true);
+        load.setConnectionTimeOut(1000);
         long before = System.currentTimeMillis();
         String download = load.download();
         long endTime = System.currentTimeMillis();
         System.out.println("共耗时: " + (endTime - before));
-        System.out.println("源文件MD5: " + MD5Util.getFileMD5String(new File("D:\\tomcat9-2\\webapps\\docs\\" + source)));
+//        System.out.println("源文件MD5: " + MD5Util.getFileMD5String(new File("D:\\tomcat9-2\\webapps\\docs\\" + source)));
+        // 2f282b84e7e608d5852449ed940bfc51
+        // 2f282b84e7e608d5852449ed940bfc51
         System.out.println("下载后MD5：" + MD5Util.getFileMD5String(new File(download)));
     }
 }
