@@ -91,6 +91,7 @@ public class UrlFileSegmentDownload {
      */
     private Map<String, HttpURLConnection> connectionMap = new ConcurrentHashMap<>();
 
+    /** 全局锁对象 */
     private ReentrantLock lock = new ReentrantLock();
 
     /**
@@ -99,24 +100,48 @@ public class UrlFileSegmentDownload {
     private final Object object = new Object();
 
     /**
-     * 重试任务队列
+     * 重试任务队列,所有执行失败的下载任务都会被放到队列中，直至超出重试次数
      */
     private Queue<DownloadTask> failureTaskQueue = new LinkedBlockingQueue<>();
 
     /**
-     * 重试次数
+     * 重试次数，重试可用连接以及重试失败任务次数都是通过这个属性来指定的
      */
     private int retryTimes;
+
     /**
-     * 重试失败次数，如果重试成功，清0
+     * 连接超时时间
+     */
+    private int connectionTimeOut = 200;
+
+    /**
+     * 已经重试失败次数，如果重试成功，清0
      */
     private int failureTimes;
 
     /**
-     * 连接正常状态码
+     * 连接正常状态码,因为牵扯到分片，如果请求头加了Range属性，返回的状态码就是206了
      */
     private final List<Integer> CONNECTION_OK = Arrays.asList(200, 206);
 
+    /**
+     * 设置连接超时时间，本类属性大多没有提供set和get方法，因为构造函数中已经提供, 因为优先使用全构造函数指定，有一个默认的构造函数，
+     * 为了想使用默认超时时间，也又不想额外增加一个构造函数，所以吧这个属性暴露出去，直接调用该方法重新指定超时时间；
+     * @param connectionTimeOut
+     */
+    public void setConnectionTimeOut(int connectionTimeOut) {
+        this.connectionTimeOut = connectionTimeOut;
+    }
+
+
+    /**
+     * 默认构造函数，未指定重试队列守护线程池是与下载任务线程池，最好不要用这个，测试用
+     * @param serverPaths       请求资源的服务器地址
+     * @param downloadPath      文件另存为地址
+     * @param partSize          每次下载文件大小
+     * @param retryTimes        失败重试次数
+     * @param isDebug           是否开启打印输出
+     */
     UrlFileSegmentDownload(String[] serverPaths, String downloadPath, int partSize, int retryTimes, boolean isDebug) {
         this.serverPaths = serverPaths;
         this.downloadPath = downloadPath + File.separator + getFileName();
@@ -127,13 +152,25 @@ public class UrlFileSegmentDownload {
         this.isDebug = isDebug;
     }
 
+    /**
+     * 推荐使用的构造函数，传入全局的任务下载调度线程池与重试队列守护线程池
+     *
+     * @param serverPaths               请求资源的服务器地址
+     * @param downloadPath              文件另存为地址
+     * @param partSize                  每次下载文件大小
+     * @param retryTimes                失败重试次数
+     * @param downloadExecutorService   任务下载调度线程池
+     * @param retryExecutorService      重试队列守护线程池
+     * @param isDebug                   是否开启打印输出
+     */
     UrlFileSegmentDownload(String[] serverPaths, String downloadPath, int partSize, int retryTimes,
-                           ExecutorService downloadExecutorService, ExecutorService retryExecutorService, boolean isDebug) {
+                           ExecutorService downloadExecutorService, ExecutorService retryExecutorService, int connectionTimeOut, boolean isDebug) {
         this.serverPaths = serverPaths;
         this.downloadPath = downloadPath + File.separator + getFileName();
         this.partSize = partSize;
         this.downloadExecutorService = downloadExecutorService;
         this.retryExecutorService = retryExecutorService;
+        this.connectionTimeOut = connectionTimeOut;
         this.retryTimes = retryTimes;
         this.isDebug = isDebug;
     }
@@ -162,7 +199,6 @@ public class UrlFileSegmentDownload {
     /**
      * 获取远程文件大小
      *
-     * @param connection 资源连接
      */
     private void getRemoteFileSize() {
         try {
@@ -203,7 +239,7 @@ public class UrlFileSegmentDownload {
      */
     private HttpURLConnection getConnection(String serverPath, String method, Map<String, String> properties) throws IOException {
         HttpURLConnection urlConnection = (HttpURLConnection) new URL(serverPath).openConnection();
-        urlConnection.setConnectTimeout(5000);
+        urlConnection.setConnectTimeout(connectionTimeOut);
         urlConnection.setRequestMethod(method);
         if (properties != null && !properties.isEmpty()) {
             properties.forEach(urlConnection::setRequestProperty);
@@ -241,10 +277,10 @@ public class UrlFileSegmentDownload {
                 }
             } catch (Exception e) {
                 if (connectionMap.containsKey(serverPath)) {
-                    print(String.format("移除服务器资源[%s]", serverPath));
+                    print(String.format("出现异常 [%s], 移除服务器资源[%s]", serverPath, e.toString()));
                     connectionMap.remove(serverPath);
                 } else {
-                    print(String.format("服务器资源[%s]无法连接", serverPath));
+                    print(String.format("服务器资源[%s]无法连接: [%s]", serverPath, e.toString()));
                 }
             }
         }
@@ -265,7 +301,9 @@ public class UrlFileSegmentDownload {
 
 
     /**
-     * 检查可用的连接，提供重试
+     * 检查可用的连接，提供重试,这里会有一个问题，在下载前就检查可用连接，如果在连接属性上的超时时间过长，再加上重试次数的原因，
+     * 如果正好有连接不可用，这一步就会耽误过多的时间；暂时先把连接超时时间设置过短，后面再考虑要不要提供几个属性，把这一块相关的时间
+     * 暴露出去
      */
     private void checkAliveConnection() {
         heartCheck();
@@ -283,14 +321,14 @@ public class UrlFileSegmentDownload {
     public String download() {
         // 获取远程文件大小
         getRemoteFileSize();
-        // 重试线程
+        // 开启重试队列守护线程
         demonRetry();
-        // 以最终可用连接数来平分下载量
+        // 因可用连接大小在下载过程中是个变量（如果下载中途有服务器出现故障）,所以先预先获取分配任务时的可用连接数，
+        // 后续都是根据这个值来分配任务的，任务分配好后再变化就不会有影响了
         final int connectionSize = connectionMap.size();
-        // 可用连接下载的线程是在partSize的基础上再切分的
+        // 一个partSize的分段大小需要当前可用连接数个线程再切分来完成下载
         long average = partSize / connectionSize;
         String serverPath;
-        int currSegment = 0;
         long startSize, endSize = 0;
         // 判断最终需要多少个线程来完成下载任务
         int taskCount;
@@ -299,25 +337,29 @@ public class UrlFileSegmentDownload {
         } else {
             taskCount = (int) (fileSize / average + 1);
         }
-        print(String.format("总文件大小[%d]， 每段截取大小[%d], 共分段[%d]次, 可用连接数[%d]，最终需要切分成[%d]个子任务",
-                fileSize, partSize, totalSegment, connectionSize, taskCount));
+        print(String.format("总文件大小[%d]， 每段截取大小[%d], 共分段[%d]次, 可用连接数[%d]，最终需要切分成[%d]个子任务, 平均每" +
+                "个子任务需要下载[%d]个字节，", fileSize, partSize, totalSegment, connectionSize, taskCount, average));
         CountDownLatch countDownLatch = new CountDownLatch(taskCount);
         int currTask = 0;
-        while (currSegment <= totalSegment && !failureFlag) {
-            // 每段大小又需要可用连接数个线程来平均完成一个段的数据下载,所以不能在循环可用连接的时候递增这个值
-            currSegment ++;
+        // 每循环完一个轮次的可用连接数，才是完成了一个partSize， currSegment才+1
+        for (int currSegment = 1; currSegment <= totalSegment && !failureFlag; currSegment ++) {
             for (Map.Entry<String, HttpURLConnection> entry : connectionMap.entrySet()) {
                 currTask ++;
-                if (currSegment > totalSegment) {
-                    break;
-                }
                 serverPath = entry.getKey();
                 // 从0开始其实是从第一个字节开始下载， 从20开始，其实是从21个字节开始；所以值虽然与上一次的endSize相同，但取值不同
                 startSize = endSize;
-                endSize = (startSize + average) - 1;
+                // 如果是最后一个任务，则将剩余的空间指向文件总大小
                 if (currTask == taskCount) {
                     endSize = fileSize;
                 }
+                // 如果不是最后一个任务，但却是每个分段的最后一个子任务，则把当前子任务的剩余大小指向endSize
+                else if (currTask % connectionSize == 0) {
+                    endSize = partSize - (average * (connectionSize - 1)) + endSize;
+                } else {
+//                  // 如果不是最后一个任务，也不是每个分段的最后一个任务，则endSize就是正常的在上一个任务的结束点加上平均任务字节数即可
+                    endSize = (startSize + average);
+                }
+                // 是否可以复用connectionMap里存的连接呢？但是如果异常切换服务器下载，又得重新根据serverPath获取，还得传入连接，因此暂时不准备这么做了
                 DownloadTask downloadTask = new DownloadTask(serverPath, startSize, endSize, countDownLatch);
                 // FIXME 感觉这一块功能费力又没意义
                 downloadTask.setPart(currSegment, connectionSize);
@@ -328,8 +370,8 @@ public class UrlFileSegmentDownload {
                     break;
                 }
             }
-            // 如果可用连接数大于总分段数，那么其实循环一次可用连接就处理完了；不需要重复分段
-            if (connectionSize >= totalSegment) {
+            // 如果可用连接数大于总任务数，那么其实循环一次可用连接就处理完了；不需要重复分段
+            if (connectionSize >= taskCount) {
                 break;
             }
         }
@@ -350,7 +392,7 @@ public class UrlFileSegmentDownload {
     /**
      * 启动线程对失败的任务队列进行任务重试
      */
-    public void demonRetry() {
+    private void demonRetry() {
         retryExecutorService.execute(() -> {
             while (!demonRetryStop) {
                 while (failureTaskQueue.size() > 0 && !demonRetryStop) {
@@ -404,6 +446,7 @@ public class UrlFileSegmentDownload {
             print("最终重试下载失败，调用countDown[addFailureTask]");
             // 如果最终重试失败了，则当前任务要把自己的countDown放行掉（测试时偶有出现，放行前的代码，竞争不过主线程？？）
             downloadTask.countDownLatch.countDown();
+            print("addFailureTask[countDown================================]");
             return false;
         }
     }
@@ -412,17 +455,33 @@ public class UrlFileSegmentDownload {
      * 下载任务
      */
     class DownloadTask implements Runnable {
+        /**
+         * @see DownloadTask#setPart(int, int)
+         */
         private int segmentNum;
+        /**
+         * @see DownloadTask#setPart(int, int)
+         */
         private int currConnectionSize;
-        /** 资源地址 */
+        /**
+         * 单个资源地址
+         */
         private String serverPath;
-        /** 起始字节 */
+        /**
+         * 起始字节
+         */
         private long startSize;
-        /** 终止字节 */
+        /**
+         * 终止字节
+         */
         private long endSize;
-        /** 任务重试失败次数，重试成功后被清0 */
+        /**
+         * 任务重试失败次数，重试成功后被清0
+         */
         private int taskFailureTimes;
-        /** 用来阻塞主线程等待所有下载任务最终的下载结果 */
+        /**
+         * 用来阻塞主线程等待所有下载任务最终的下载结果
+         */
         private CountDownLatch countDownLatch;
 
         /**
@@ -439,7 +498,7 @@ public class UrlFileSegmentDownload {
 
         /**
          *
-         * 需求想要多个线程如果下完其中一个partSize的话，需要打印第i段下载完成；实际上这个根本没有意义；
+         * 需求想要多个线程如果下完其中一个partSize的话，需要打印第i段下载完成；实际上这个应该是没有意义的；
          * 最初线程分配好的任务最终也不一定就是最初的这几个线程完成的，而且先后顺序也没法保证，就算打印出来，又没啥用；
          * 而且分配任务是按照连接数来的，异常情况下，连接数是个变数；现在只能临时记录下分配任务时的这几个属性;
          *
@@ -448,8 +507,9 @@ public class UrlFileSegmentDownload {
          * 原因，这样可能会发生，显示第三段完成，然后才是第一段完成，目前采用的是这种方式
          *
          * 单独T出来一个方法来做这个处理，将来不需要了，直接去掉这块就好
-         * @param segmentNum
-         * @param currConnectionSize
+         *
+         * @param segmentNum          该任务所属分段
+         * @param currConnectionSize  分配任务时是按照多少可用连接数来分的
          */
         public void setPart(int segmentNum, int currConnectionSize) {
             this.segmentNum = segmentNum;
@@ -502,6 +562,7 @@ public class UrlFileSegmentDownload {
                 if (status == 2) {
                     taskFailureTimes = 0;
                     print(String.format("第一次重试成功, 当前任务： %s", this));
+                    print("retry[countDown================================]");
                     countDownLatch.countDown();
                     return true;
                 } else {
@@ -516,6 +577,7 @@ public class UrlFileSegmentDownload {
                 if (status == 2) {
                     taskFailureTimes = 0;
                     print(String.format("转换服务器下载成功， 当前任务： %s", this));
+                    print("retry[countDown================================]");
                     countDownLatch.countDown();
                     return true;
                 } else {
@@ -592,7 +654,7 @@ public class UrlFileSegmentDownload {
                         if (taskFailureTimes == 0) {
                             addFailureTask(this);
                         }
-                        print(String.format("任务 %s 下载异常，状态置为0", this));
+                        print(String.format("任务 %s 下载异常，状态置为0, 异常信息： [%s]", this, e.toString()));
                     }
                 }
             } catch (IOException e) {
@@ -606,6 +668,7 @@ public class UrlFileSegmentDownload {
                 } else {
                     addPartAndPrint();
                     if (taskFailureTimes == 0) {
+                        print("run[countDown================================]");
                         countDownLatch.countDown();
                     }
                 }
@@ -614,9 +677,10 @@ public class UrlFileSegmentDownload {
     }
 
     public static void main(String[] args) {
-        String[] paths = {"http://localhost:8080/docs/aio.html", "http://localhost:8082/docs/aio.html"};
+//        String[] paths = {"http://47.88.102.56/test.file", "http://47.89.244.85/test.file", "http://47.89.209.42/test.file", "http://aaa.2121.com/"};
+        String[] paths = {"http://localhost:8080/docs/aio.html", "http://localhost:8081/docs/aio.html", "http://aaa.2121.com/"};
         String downloadPath = System.getProperty("user.dir") + File.separator + "src" + File.separator + "main" + File.separator + "resources";
-        UrlFileSegmentDownload load = new UrlFileSegmentDownload(paths, downloadPath, 5000 * 1024, 5, true);
+        UrlFileSegmentDownload load = new UrlFileSegmentDownload(paths, downloadPath, 3 * 1023, 5, true);
         long before = System.currentTimeMillis();
         load.download();
         long endTime = System.currentTimeMillis();
