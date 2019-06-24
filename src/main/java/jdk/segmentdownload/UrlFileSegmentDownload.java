@@ -1,5 +1,7 @@
 package jdk.segmentdownload;
 
+import jdk.util.MD5Util;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,6 +11,7 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -33,6 +36,9 @@ public class UrlFileSegmentDownload {
 
     /** 已完成下载任务段 */
     private Map<Integer, List<DownloadTask>> doneTaskMap = new ConcurrentHashMap<>();
+
+    /** 共完成多少个子任务的数量 */
+    private AtomicInteger doneTaskNum = new AtomicInteger();
 
     /**
      * 每次下载多少大小,在源文件大小基础上切分,单位byte;
@@ -212,6 +218,7 @@ public class UrlFileSegmentDownload {
                         if (this.fileSize == 0) {
                             String contentLength = connection.getHeaderField("Content-Length");
                             this.fileSize = Long.parseLong(contentLength);
+                            this.partSize = partSize > fileSize ? fileSize : partSize;
                         }
                     } catch (Exception e) {}
                 });
@@ -340,6 +347,9 @@ public class UrlFileSegmentDownload {
         print(String.format("总文件大小[%d]， 每段截取大小[%d], 共分段[%d]次, 可用连接数[%d]，最终需要切分成[%d]个子任务, 平均每" +
                 "个子任务需要下载[%d]个字节，", fileSize, partSize, totalSegment, connectionSize, taskCount, average));
         CountDownLatch countDownLatch = new CountDownLatch(taskCount);
+        if (new File(downloadPath).exists()) {
+            new File(downloadPath).delete();
+        }
         int currTask = 0;
         // 每循环完一个轮次的可用连接数，才是完成了一个partSize， currSegment才+1
         for (int currSegment = 1; currSegment <= totalSegment && !failureFlag; currSegment ++) {
@@ -357,7 +367,7 @@ public class UrlFileSegmentDownload {
                     endSize = partSize - (average * (connectionSize - 1)) + endSize;
                 } else {
 //                  // 如果不是最后一个任务，也不是每个分段的最后一个任务，则endSize就是正常的在上一个任务的结束点加上平均任务字节数即可
-                    endSize = (startSize + average);
+                    endSize = (startSize + average) - 1;
                 }
                 // 是否可以复用connectionMap里存的连接呢？但是如果异常切换服务器下载，又得重新根据serverPath获取，还得传入连接，因此暂时不准备这么做了
                 DownloadTask downloadTask = new DownloadTask(serverPath, startSize, endSize, countDownLatch);
@@ -443,10 +453,8 @@ public class UrlFileSegmentDownload {
         } else {
             // 下载失败标志，给主线程判断
             failureFlag = true;
-            print("最终重试下载失败，调用countDown[addFailureTask]");
             // 如果最终重试失败了，则当前任务要把自己的countDown放行掉（测试时偶有出现，放行前的代码，竞争不过主线程？？）
             downloadTask.countDownLatch.countDown();
-            print("addFailureTask[countDown================================]");
             return false;
         }
     }
@@ -489,6 +497,11 @@ public class UrlFileSegmentDownload {
          */
         private volatile int status;
 
+        private final int STATUS_INIT = 0;
+        private final int STATUS_DOING = 1;
+        private final int STATUS_DONE = 2;
+
+
         DownloadTask(String serverPath, long startSize, long endSize, CountDownLatch countDownLatch) {
             this.serverPath = serverPath;
             this.startSize = startSize;
@@ -529,7 +542,8 @@ public class UrlFileSegmentDownload {
                 }
                 tempList.add(this);
                 if (tempList.size() == this.currConnectionSize) {
-                    print(String.format("第[%d]块下载完成", this.segmentNum));
+                    int andIncrement = doneTaskNum.incrementAndGet();
+                    print(String.format("第[%d]块下载完成, 当前实际共下载完成[%d]段", this.segmentNum, andIncrement / this.currConnectionSize));
                 }
                 doneTaskMap.put(this.segmentNum, tempList);
             } finally {
@@ -559,10 +573,9 @@ public class UrlFileSegmentDownload {
             if (taskFailureTimes == 0) {
                 taskFailureTimes++;
                 run();
-                if (status == 2) {
+                if (status == STATUS_DONE) {
                     taskFailureTimes = 0;
                     print(String.format("第一次重试成功, 当前任务： %s", this));
-                    print("retry[countDown================================]");
                     countDownLatch.countDown();
                     return true;
                 } else {
@@ -574,10 +587,9 @@ public class UrlFileSegmentDownload {
                 this.serverPath = entry.getKey();
                 print(String.format("重试失败，转换服务器, 更改任务为 %s", this));
                 run();
-                if (status == 2) {
+                if (status == STATUS_DONE) {
                     taskFailureTimes = 0;
                     print(String.format("转换服务器下载成功， 当前任务： %s", this));
-                    print("retry[countDown================================]");
                     countDownLatch.countDown();
                     return true;
                 } else {
@@ -590,29 +602,6 @@ public class UrlFileSegmentDownload {
 
         @Override
         public void run() {
-            /*try {
-                status = new Random().nextInt(50);
-                Thread.sleep(1500);
-                print("status=" + status);
-                if (status != 2) {
-                    // 只有第一次失败才添加到重试队列中，后续重试由重试方法处理
-                    if (taskFailureTimes == 0) {
-                        print("第一次下载失败");
-                        addFailureTask(this);
-                    }
-                    return;
-                } else {
-                    Thread.sleep(1500);
-                    // 第一次成功直接就countDown，如果不是第一次则会由retry方法来调用该方法，retry里重试成功后会有一些处理，处理结束后再countDown；
-                    // 如果在这里就countDwon主线程被放行了，重试线程还在异步处理
-                    if (taskFailureTimes == 0) {
-                        print("调用countDown[run]");
-                        countDownLatch.countDown();
-                    }
-                }
-            } catch (InterruptedException e) {
-
-            }*/
             Map<String, String> properties = new HashMap<>(6);
             properties.put("Range", "bytes=" + startSize + "-" + endSize);
             try {
@@ -621,7 +610,8 @@ public class UrlFileSegmentDownload {
                 print(String.format("%s从[%s]下载到[%s]", serverPath, startSize, endSize));
                 HttpURLConnection conn = getConnection(serverPath, "GET", properties);
                 if (CONNECTION_OK.contains(conn.getResponseCode())) {
-                    status = 1;
+                    print(String.format("返回数据大小： [%s]", conn.getHeaderField("Content-Length")));
+                    status = STATUS_DOING;
                     print(String.format("任务 %s 连接正常...状态置为1", this));
                     try (InputStream inputStream = conn.getInputStream()) {
                         print(String.format("设置文件写入点： %s", startSize));
@@ -629,17 +619,20 @@ public class UrlFileSegmentDownload {
                         byte[] buf = new byte[1024 * 4];
                         long count;
                         final int bufLength = buf.length;
-                        // 由于缓冲数组是1024，如果最后一次不足1024，而写入1024数组长度的话，会有很多空，所以计算出来最后一次数组中有效数据的长度
+                        // 由于缓冲数组是有长度的，如果最后一次没有读满，却直接写入数组长度的话，会有很多空，
+                        // 所以计算出来最后一次数组中有效数据的长度；空看起来似乎也不占用长度，只是有些编辑器打开会显示NULL，很难看
+                        boolean lastWriteIsFull = true;
                         if ((endSize - startSize) % bufLength == 0) {
                             count = (endSize - startSize) / bufLength;
                         } else {
                             count = (endSize - startSize) / bufLength + 1;
+                            lastWriteIsFull = false;
                         }
                         int loopIndex = 0;
                         while (inputStream.read(buf) != -1) {
                             loopIndex ++;
                             // 最后一次只写入有效数据的长度
-                            if (loopIndex == count) {
+                            if (loopIndex == count && !lastWriteIsFull) {
                                 raf.write(buf, 0, (int) (endSize - startSize) % bufLength);
                             } else {
                                 raf.write(buf);
@@ -647,10 +640,10 @@ public class UrlFileSegmentDownload {
                         }
                         // 每个任务写的内容都能及时看到
                         raf.close();
-                        status = 2;
+                        status = STATUS_DONE;
                         print(String.format("任务 %s 下载完成，状态置为2", this));
                     } catch (Exception e) {
-                        status = 0;
+                        status = STATUS_INIT;
                         if (taskFailureTimes == 0) {
                             addFailureTask(this);
                         }
@@ -658,9 +651,10 @@ public class UrlFileSegmentDownload {
                     }
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                status = STATUS_INIT;
+                print(String.format("任务 %s 下载异常，状态置为0, 异常信息： [%s]", this, e.toString()));
             } finally {
-                if (status != 2) {
+                if (status != STATUS_DONE) {
                     // 只有第一次失败才添加到重试队列中，后续重试由重试方法处理
                     if (taskFailureTimes == 0) {
                         addFailureTask(this);
@@ -668,7 +662,6 @@ public class UrlFileSegmentDownload {
                 } else {
                     addPartAndPrint();
                     if (taskFailureTimes == 0) {
-                        print("run[countDown================================]");
                         countDownLatch.countDown();
                     }
                 }
@@ -676,14 +669,18 @@ public class UrlFileSegmentDownload {
         }
     }
 
-    public static void main(String[] args) {
-//        String[] paths = {"http://47.88.102.56/test.file", "http://47.89.244.85/test.file", "http://47.89.209.42/test.file", "http://aaa.2121.com/"};
-        String[] paths = {"http://localhost:8080/docs/aio.html", "http://localhost:8081/docs/aio.html", "http://aaa.2121.com/"};
+    public static void main(String[] args) throws IOException {
+        String source = "test.file";
+        String[] paths = {"http://localhost:8080/docs/" + source, "http://localhost:8081/docs/" + source, "http://aaa.2121.com/"};
+//        String[] paths = {"http://47.88.102.56/" + source, "http://47.89.244.85/" + source, "http://47.89.209.42/" + source, "http://aaa.2121.com/"};
         String downloadPath = System.getProperty("user.dir") + File.separator + "src" + File.separator + "main" + File.separator + "resources";
-        UrlFileSegmentDownload load = new UrlFileSegmentDownload(paths, downloadPath, 3 * 1023, 5, true);
+        UrlFileSegmentDownload load = new UrlFileSegmentDownload(paths, downloadPath, 5002 * 1024 * 3, 5, true);
+        load.setConnectionTimeOut(500);
         long before = System.currentTimeMillis();
-        load.download();
+        String download = load.download();
         long endTime = System.currentTimeMillis();
         System.out.println("共耗时: " + (endTime - before));
+        System.out.println("源文件MD5: " + MD5Util.getFileMD5String(new File("D:\\tomcat9-2\\webapps\\docs\\" + source)));
+        System.out.println("下载后MD5：" + MD5Util.getFileMD5String(new File(download)));
     }
 }
