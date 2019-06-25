@@ -247,7 +247,7 @@ public class UrlFileSegmentDownload {
      * @param downloadExecutorService 任务下载调度线程池
      * @param retryExecutorService    重试队列守护线程池
      */
-    UrlFileSegmentDownload(long partSize, int retryTimes, int connectionTimeOut, boolean isDebug,
+    public UrlFileSegmentDownload(long partSize, int retryTimes, int connectionTimeOut, boolean isDebug,
                            ExecutorService downloadExecutorService, ExecutorService retryExecutorService) {
         this.partSize = partSize;
         this.retryTimes = retryTimes;
@@ -266,7 +266,7 @@ public class UrlFileSegmentDownload {
      * @param connectionTimeOut 连接超时时间
      * @param isDebug           是否开启打印输出
      */
-    UrlFileSegmentDownload(long partSize, int retryTimes, int connectionTimeOut, boolean isDebug) {
+    public UrlFileSegmentDownload(long partSize, int retryTimes, int connectionTimeOut, boolean isDebug) {
         this.partSize = partSize;
         this.retryTimes = retryTimes;
         this.connectionTimeOut = connectionTimeOut;
@@ -436,6 +436,13 @@ public class UrlFileSegmentDownload {
         failureTimes = 0;
     }
 
+
+    /**
+     * 下载方法
+     * @param serverPaths
+     * @param downloadPath
+     * @return
+     */
     public String download(String[] serverPaths, String downloadPath) {
         // 初始化下载相关参数
         init(serverPaths, downloadPath);
@@ -450,9 +457,11 @@ public class UrlFileSegmentDownload {
         long average = partSize / connectionSize;
         String serverPath;
         long startSize, endSize = 0;
-        // 判断最终需要多少个线程来完成下载任务
+        // 判断最终需要多少个线程子任务来完成下载任务
         int taskCount;
-        if (fileSize % average == 0) {
+        if (partSize >= fileSize) {
+            taskCount = connectionSize;
+        } else if (fileSize % average == 0) {
             taskCount = (int) (fileSize / average);
         } else {
             taskCount = (int) (fileSize / average + 1);
@@ -460,6 +469,7 @@ public class UrlFileSegmentDownload {
         print(String.format("总文件大小[%d]， 每段截取大小[%d], 共分段[%d]次, 可用连接数[%d]，最终需要切分成[%d]个子任务, 平均每" +
                 "个子任务需要下载[%d]个字节，", fileSize, partSize, totalSegment, connectionSize, taskCount, average));
         CountDownLatch countDownLatch = new CountDownLatch(taskCount);
+        // TODO 后面在看情况决定要不要暴露一个方法允许自定义文件名吧，现在为了能准确覆盖，写之前先删除之前下载保存的文件
         if (new File(downloadPath).exists()) {
             new File(downloadPath).delete();
         }
@@ -720,7 +730,6 @@ public class UrlFileSegmentDownload {
             try {
                 // 这样做是因为为了能够每写一部分数据就能看到，所以文件在每个任务中写完都调用了close方法，所以任务重复调用要重复初始化
                 RandomAccessFile raf = new RandomAccessFile(downloadPath, "rws");
-                raf.setLength(fileSize);
                 print(String.format("%s从[%s]下载到[%s]", serverPath, startSize, endSize));
                 HttpURLConnection conn = getConnection(serverPath, "GET", properties);
                 if (CONNECTION_OK.contains(conn.getResponseCode())) {
@@ -767,9 +776,8 @@ public class UrlFileSegmentDownload {
     }
 
     public static void main(String[] args) throws IOException {
-        String source = "test.file";
+        String source = "changelog.html";
         String[] paths = {"http://localhost:8080/docs/" + source, "http://localhost:8081/docs/" + source, "http://aaa.2121.com/"};
-//        String[] paths = {/*"http://47.88.102.56/" + source, */"http://47.89.244.85/" + source,/* "http://47.89.209.42/" + source, */"http://aaa.2121.com/"};
         String downloadPath = System.getProperty("user.dir") + File.separator + "src" + File.separator + "main" + File.separator + "resources";
         UrlFileSegmentDownload load = new UrlFileSegmentDownload(1000 * 1024 * 1024, 5, 200, true);
         long before = System.currentTimeMillis();
@@ -778,6 +786,5 @@ public class UrlFileSegmentDownload {
         System.out.println("下载共耗时: " + (endTime - before));
         System.out.println("下载完成后文件大小： " + new File(download).length());
         System.out.println("下载后MD5：" + MD5Util.getFileMD5String(new File(download)));
-        ;
     }
 }
