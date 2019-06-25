@@ -420,8 +420,7 @@ public class UrlFileSegmentDownload {
 
     /**
      * 检查可用的连接，提供重试,这里会有一个问题，在下载前就检查可用连接，如果在连接属性上的超时时间过长，再加上重试次数的原因，
-     * 如果正好有连接不可用，这一步就会耽误过多的时间；暂时先把连接超时时间设置过短，后面再考虑要不要提供几个属性，把这一块相关的时间
-     * 暴露出去
+     * 如果正好有连接不可用，这一步就会耽误过多的时间；
      */
     private void checkAliveConnection() {
         heartCheck();
@@ -439,9 +438,9 @@ public class UrlFileSegmentDownload {
 
     /**
      * 下载方法
-     * @param serverPaths
-     * @param downloadPath
-     * @return
+     * @param serverPaths  服务器网络资源地址，必须是相同的资源在不同的服务器上
+     * @param downloadPath 下载完成后存放路径
+     * @return 返回最终下载的文件完成路径包含文件名
      */
     public String download(String[] serverPaths, String downloadPath) {
         // 初始化下载相关参数
@@ -457,14 +456,18 @@ public class UrlFileSegmentDownload {
         long average = partSize / connectionSize;
         String serverPath;
         long startSize, endSize = 0;
-        // 判断最终需要多少个线程子任务来完成下载任务
         int taskCount;
+        // 判断最终需要多少个线程子任务来完成下载任务
         if (partSize >= fileSize) {
             taskCount = connectionSize;
         } else if (fileSize % average == 0) {
             taskCount = (int) (fileSize / average);
         } else {
-            taskCount = (int) (fileSize / average + 1);
+            taskCount = (int) (fileSize / average) + 1;
+        }
+        // 由于average算出来的数据会舍去余数，最终结果可能会大于总循环数，但其实下面会保证在循环内把多出来的任务量都分配给每个分段的最后一个任务上了
+        if (taskCount > connectionSize * totalSegment) {
+            taskCount = connectionSize * totalSegment;
         }
         print(String.format("总文件大小[%d]， 每段截取大小[%d], 共分段[%d]次, 可用连接数[%d]，最终需要切分成[%d]个子任务, 平均每" +
                 "个子任务需要下载[%d]个字节，", fileSize, partSize, totalSegment, connectionSize, taskCount, average));
@@ -477,7 +480,7 @@ public class UrlFileSegmentDownload {
         // 每循环完一个轮次的可用连接数，才是完成了一个partSize， currSegment才+1
         for (int currSegment = 1; currSegment <= totalSegment && !failureFlag; currSegment++) {
             for (Map.Entry<String, HttpURLConnection> entry : connectionMap.entrySet()) {
-                currTask++;
+                currTask ++;
                 serverPath = entry.getKey();
                 // 从0开始其实是从第一个字节开始下载， 从20开始，其实是从21个字节开始；所以值虽然与上一次的endSize相同，但取值不同
                 startSize = endSize;
@@ -488,10 +491,12 @@ public class UrlFileSegmentDownload {
                 // 如果不是最后一个任务，但却是每个分段的最后一个子任务，则把当前子任务的剩余大小指向endSize
                 else if (currTask % connectionSize == 0) {
                     endSize = partSize - (average * (connectionSize - 1)) + endSize;
-//                    endSize = partSize * currSegment;
                 } else {
-//                  // 如果不是最后一个任务，也不是每个分段的最后一个任务，则endSize就是正常的在上一个任务的结束点加上平均任务字节数即可
+                    // 如果不是最后一个任务，也不是每个分段的最后一个任务，则endSize就是正常的在上一个任务的结束点加上平均任务字节数即可
                     endSize = (startSize + average);
+                }
+                if (endSize > fileSize) {
+                    endSize = fileSize;
                 }
                 // 是否可以复用connectionMap里存的连接呢？但是如果异常切换服务器下载，又得重新根据serverPath获取，还得传入连接，因此暂时不准备这么做了
                 DownloadTask downloadTask = new DownloadTask(serverPath, startSize, endSize, countDownLatch);
@@ -499,8 +504,8 @@ public class UrlFileSegmentDownload {
                 downloadTask.setPart(currSegment, connectionSize);
                 print(String.format("currSegment: [%s]，下载任务: %s)", currSegment, downloadTask));
                 downloadExecutorService.execute(downloadTask);
-                // 如果可用连接数大于总分段数，那么其实循环一次可用连接就处理完了；不需要重复分段
-                if (endSize == fileSize) {
+                // 处理到最后直接跳回,因为有可能最后一次的分段只要一个子任务就完成了，没必要再循环多次了
+                if (endSize >= fileSize) {
                     break;
                 }
             }
@@ -776,10 +781,11 @@ public class UrlFileSegmentDownload {
     }
 
     public static void main(String[] args) throws IOException {
-        String source = "changelog.html";
-        String[] paths = {"http://localhost:8080/docs/" + source, "http://localhost:8081/docs/" + source, "http://aaa.2121.com/"};
+        String source = "test.file";
+//        String[] paths = {"http://localhost:8080/docs/" + source, "http://localhost:8081/docs/" + source, "http://localhost:8081/examples/" + source, };
+        String[] paths = {"http://47.88.102.56/" + source, "http://47.89.244.85/" + source, "http://47.89.209.42/" + source, "http://aaa.2121.com/"};
         String downloadPath = System.getProperty("user.dir") + File.separator + "src" + File.separator + "main" + File.separator + "resources";
-        UrlFileSegmentDownload load = new UrlFileSegmentDownload(1000 * 1024 * 1024, 5, 200, true);
+        UrlFileSegmentDownload load = new UrlFileSegmentDownload(10 * 1024 * 1024, 5, 200, true);
         long before = System.currentTimeMillis();
         String download = load.download(paths, downloadPath);
         long endTime = System.currentTimeMillis();
