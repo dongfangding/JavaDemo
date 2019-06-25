@@ -15,11 +15,53 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * 网络资源分片下载，还有本来不是作为多个服务器的不同资源在本地进行多线程下载；而是多个服务器都有一个相同的资源，然后使用多线程对不同服务器上进行分片下载；
+ * 网络资源分片下载，本类不是作为多个服务器的不同资源在本地进行多线程下载；而是多个服务器都有一个相同的资源，然后使用多线程对不同服务器上进行分片下载；
  * 每个服务器各下载一部分，最终合成一个最终的文件；
  *
+ * 比如有一个文件是100MB，在三台服务器上， 每次下载10MB，那么就会被分成10段；每一段的下载量是可用连接来平分的，也就是三个线程分别下载 3、3、4MB共同来完成
+ * 10MB的下载；然后就是第二段的任务分配，依次类推；如果中途有连接中断导致下载失败，要能够把失败的任务转移到另外一台服务器上重新下载，最终只要能够
+ * 有一个可用连接把任务下载完成，就可以；然后把这些下载合成一个最终的文件；
+ *
+ * <p>
  * 必须一个网络资源下载对应创建一个新的类，不能作为单例使用；
  * 其中用来作为监听重试队列的线程和用来处理下载任务的线程池最好初始化的时候传入两个全局的线程池来使用;
+ * <p>
+ * 在Spring中推荐使用方式，首先在配置类中配置{@code Bean}
+ * <pre class="code">
+ * &#064;Configuration
+ * public class Configuration {
+ *
+ *     &#064;Bean
+ *     public ExecutorService downloadExecutorService {
+ *         return ......
+ *     }
+ *
+ *     &#064;Bean
+ *     public ExecutorService retryExecutorService {
+ *         return ......
+ *     }
+ *
+ *     &#064;Bean
+ *     &#064;Scope("prototype")
+ *     public UrlFileSegmentDownload urlFileSegmentDownload(ExecutorService downloadExecutorService, ExecutorService retryExecutorService) {
+ *          new UrlFileSegmentDownload(10 * 1024 * 1024, 5, 200, false, downloadExecutorService, retryExecutorService);
+ *     }
+ * }
+ *
+ * 下载类使用
+ * &#064;Service
+ * public class DownloadService {
+ *     &#064;Autowired
+ *     private UrlFileSegmentDownload urlFileSegmentDownload;
+ *
+ *     public void download() {
+ *         String[] paths = {"http://localhost:8080/docs/changelog.html", "http://localhost:8081/docs/changelog.html", "http://aaa.2121.com/"};
+ *         String downloadPath = System.getProperty("user.dir") + File.separator + "src" + File.separator + "main" + File.separator + "resources";
+ *         String download = load.download(paths, downloadPath);
+ *     }
+ * }
+ *
+ * </pre>
  *
  * @author dongfang.ding
  * @date 2019/6/19 10:08
@@ -31,13 +73,19 @@ public class UrlFileSegmentDownload {
      */
     private volatile long fileSize;
 
-    /** 是否开启打印输出 */
-    private boolean isDebug;
+    /**
+     * 是否开启打印输出
+     */
+    private boolean debug;
 
-    /** 已完成下载任务段 */
+    /**
+     * 已完成下载任务段
+     */
     private Map<Integer, List<DownloadTask>> doneTaskMap = new ConcurrentHashMap<>();
 
-    /** 共完成多少个子任务的数量 */
+    /**
+     * 共完成多少个子任务的数量
+     */
     private AtomicInteger doneTaskNum = new AtomicInteger();
 
     /**
@@ -62,18 +110,19 @@ public class UrlFileSegmentDownload {
     private String[] serverPaths;
 
     /**
-     * 下载完成后存放地址
+     * 下载完成后存放路径
      */
     private String downloadPath;
 
-    /** 用来停止重试线程循环的条件 */
+    /**
+     * 用来停止重试线程循环的条件
+     */
     private volatile boolean demonRetryStop = false;
 
     /**
      * 用来下载具体任务的线程池，最好自己传入一个全局的线程池
      */
     private ExecutorService downloadExecutorService;
-
 
     /**
      * 用来监听重试队列的线程池，最好自己传入一个全局的线程池
@@ -97,7 +146,9 @@ public class UrlFileSegmentDownload {
      */
     private Map<String, HttpURLConnection> connectionMap = new ConcurrentHashMap<>();
 
-    /** 全局锁对象 */
+    /**
+     * 全局锁对象
+     */
     private ReentrantLock lock = new ReentrantLock();
 
     /**
@@ -118,7 +169,7 @@ public class UrlFileSegmentDownload {
     /**
      * 连接超时时间
      */
-    private int connectionTimeOut = 200;
+    private int connectionTimeOut;
 
     /**
      * 已经重试失败次数，如果重试成功，清0
@@ -131,56 +182,104 @@ public class UrlFileSegmentDownload {
     private final List<Integer> CONNECTION_OK = Arrays.asList(200, 206);
 
     /**
-     * 设置连接超时时间，本类属性大多没有提供set和get方法，因为构造函数中已经提供, 因为优先使用全构造函数指定，有一个默认的构造函数，
-     * 为了想使用默认超时时间，也又不想额外增加一个构造函数，所以吧这个属性暴露出去，直接调用该方法重新指定超时时间；
+     * 设置连接超时时间
+     *
      * @param connectionTimeOut
      */
     public void setConnectionTimeOut(int connectionTimeOut) {
         this.connectionTimeOut = connectionTimeOut;
     }
 
+    /**
+     * 设置是否开启打印
+     *
+     * @param debug
+     */
+    public void setDebug(boolean debug) {
+        this.debug = debug;
+    }
 
     /**
-     * 默认构造函数，未指定重试队列守护线程池是与下载任务线程池，最好不要用这个，测试用
-     * @param serverPaths       请求资源的服务器地址
-     * @param downloadPath      文件另存为地址
-     * @param partSize          每次下载文件大小
-     * @param retryTimes        失败重试次数
-     * @param isDebug           是否开启打印输出
+     * 设置每次分段文件下载大小
+     *
+     * @param partSize
      */
-    UrlFileSegmentDownload(String[] serverPaths, String downloadPath, int partSize, int retryTimes, boolean isDebug) {
-        this.serverPaths = serverPaths;
-        this.downloadPath = downloadPath + File.separator + getFileName();
+    public void setPartSize(long partSize) {
         this.partSize = partSize;
-        this.downloadExecutorService = defaultDownloadExecutorService;
-        this.retryExecutorService = defaultRetryExecutorService;
-        this.retryTimes = retryTimes;
-        this.isDebug = isDebug;
     }
+
+    /**
+     * 设置失败重试次数
+     *
+     * @param retryTimes
+     */
+    public void setRetryTimes(int retryTimes) {
+        this.retryTimes = retryTimes;
+    }
+
+    /**
+     * 设置下载线程池
+     *
+     * @param downloadExecutorService
+     */
+    public void setDownloadExecutorService(ExecutorService downloadExecutorService) {
+        this.downloadExecutorService = downloadExecutorService;
+    }
+
+    /**
+     * 设置重试队列监听线程池
+     *
+     * @param retryExecutorService
+     */
+    public void setRetryExecutorService(ExecutorService retryExecutorService) {
+        this.retryExecutorService = retryExecutorService;
+    }
+
 
     /**
      * 推荐使用的构造函数，传入全局的任务下载调度线程池与重试队列守护线程池
+     * 只初始化核心配置参数，其他与下载相关的属性通过另外下载方法指定；这种方式方便将来这个类应用于Spring的Bean的Prototype作用域配置就好;
      *
-     * @param serverPaths               请求资源的服务器地址
-     * @param downloadPath              文件另存为地址
-     * @param partSize                  每次下载文件大小
-     * @param retryTimes                失败重试次数
-     * @param downloadExecutorService   任务下载调度线程池
-     * @param retryExecutorService      重试队列守护线程池
-     * @param isDebug                   是否开启打印输出
+     * @param partSize                每次下载文件大小
+     * @param retryTimes              失败重试次数
+     * @param connectionTimeOut       连接超时时间
+     * @param isDebug                 是否开启打印输出
+     * @param downloadExecutorService 任务下载调度线程池
+     * @param retryExecutorService    重试队列守护线程池
      */
-    UrlFileSegmentDownload(String[] serverPaths, String downloadPath, int partSize, int retryTimes,
-                           ExecutorService downloadExecutorService, ExecutorService retryExecutorService, int connectionTimeOut, boolean isDebug) {
-        this.serverPaths = serverPaths;
-        this.downloadPath = downloadPath + File.separator + getFileName();
+    UrlFileSegmentDownload(long partSize, int retryTimes, int connectionTimeOut, boolean isDebug,
+                           ExecutorService downloadExecutorService, ExecutorService retryExecutorService) {
         this.partSize = partSize;
+        this.retryTimes = retryTimes;
+        this.connectionTimeOut = connectionTimeOut;
+        this.debug = isDebug;
         this.downloadExecutorService = downloadExecutorService;
         this.retryExecutorService = retryExecutorService;
-        this.connectionTimeOut = connectionTimeOut;
-        this.retryTimes = retryTimes;
-        this.isDebug = isDebug;
     }
 
+    /**
+     * 未指定重试队列守护线程池是与下载任务线程池，最好不要用这个，测试用
+     * 只初始化核心配置参数，其他与下载相关的属性通过另外下载方法指定；这种方式方便将来这个类应用于Spring的Bean的Prototype作用域配置就好;
+     *
+     * @param partSize          每次下载文件大小
+     * @param retryTimes        失败重试次数
+     * @param connectionTimeOut 连接超时时间
+     * @param isDebug           是否开启打印输出
+     */
+    UrlFileSegmentDownload(long partSize, int retryTimes, int connectionTimeOut, boolean isDebug) {
+        this.partSize = partSize;
+        this.retryTimes = retryTimes;
+        this.connectionTimeOut = connectionTimeOut;
+        this.debug = isDebug;
+        this.downloadExecutorService = defaultDownloadExecutorService;
+        this.retryExecutorService = defaultRetryExecutorService;
+    }
+
+    /**
+     * 获取资源中的文件名
+     *
+     * @return
+     */
     private String getFileName() {
         if (serverPaths.length > 0) {
             return serverPaths[0].substring(serverPaths[0].lastIndexOf("/"));
@@ -193,7 +292,7 @@ public class UrlFileSegmentDownload {
      * 是默认的，下载完成或失败之后需要关闭线程池，不建议这样使用，如果忘记关闭线程池或者频繁创建关闭都会过多的占用资源;
      * 如果是在web环境中，自己传入的全局线程池，不需要关闭，但如果是默认的，却不得不关闭
      */
-    public void shutdownDefaultExecutor() {
+    private void shutdownDefaultExecutor() {
         if (downloadExecutorService == defaultDownloadExecutorService) {
             downloadExecutorService.shutdown();
         }
@@ -202,9 +301,20 @@ public class UrlFileSegmentDownload {
         }
     }
 
+
+    /**
+     * 初始化下载相关参数
+     *
+     * @param serverPaths  服务器网络资源地址，必须是相同的资源在不同的服务器上
+     * @param downloadPath 下载完成后存放路径
+     */
+    private void init(String[] serverPaths, String downloadPath) {
+        this.serverPaths = serverPaths;
+        this.downloadPath = downloadPath + File.separator + getFileName();
+    }
+
     /**
      * 获取远程文件大小
-     *
      */
     private void getRemoteFileSize() {
         try {
@@ -220,7 +330,8 @@ public class UrlFileSegmentDownload {
                             this.fileSize = Long.parseLong(contentLength);
                             this.partSize = partSize > fileSize ? fileSize : partSize;
                         }
-                    } catch (Exception e) {}
+                    } catch (Exception e) {
+                    }
                 });
                 // 计算分段数量
                 if (fileSize % partSize == 0) {
@@ -299,7 +410,7 @@ public class UrlFileSegmentDownload {
      * @param msg
      */
     private void print(String msg) {
-        if (isDebug) {
+        if (debug) {
             System.out.printf("[%s]: %s", Thread.currentThread(), msg);
             System.out.println();
             System.out.println();
@@ -325,7 +436,9 @@ public class UrlFileSegmentDownload {
         failureTimes = 0;
     }
 
-    public String download() {
+    public String download(String[] serverPaths, String downloadPath) {
+        // 初始化下载相关参数
+        init(serverPaths, downloadPath);
         // 获取远程文件大小
         getRemoteFileSize();
         // 开启重试队列守护线程
@@ -352,9 +465,9 @@ public class UrlFileSegmentDownload {
         }
         int currTask = 0;
         // 每循环完一个轮次的可用连接数，才是完成了一个partSize， currSegment才+1
-        for (int currSegment = 1; currSegment <= totalSegment && !failureFlag; currSegment ++) {
+        for (int currSegment = 1; currSegment <= totalSegment && !failureFlag; currSegment++) {
             for (Map.Entry<String, HttpURLConnection> entry : connectionMap.entrySet()) {
-                currTask ++;
+                currTask++;
                 serverPath = entry.getKey();
                 // 从0开始其实是从第一个字节开始下载， 从20开始，其实是从21个字节开始；所以值虽然与上一次的endSize相同，但取值不同
                 startSize = endSize;
@@ -364,8 +477,8 @@ public class UrlFileSegmentDownload {
                 }
                 // 如果不是最后一个任务，但却是每个分段的最后一个子任务，则把当前子任务的剩余大小指向endSize
                 else if (currTask % connectionSize == 0) {
-//                    endSize = partSize - (average * (connectionSize - 1)) + endSize;
-                    endSize = partSize * currSegment;
+                    endSize = partSize - (average * (connectionSize - 1)) + endSize;
+//                    endSize = partSize * currSegment;
                 } else {
 //                  // 如果不是最后一个任务，也不是每个分段的最后一个任务，则endSize就是正常的在上一个任务的结束点加上平均任务字节数即可
                     endSize = (startSize + average);
@@ -397,7 +510,7 @@ public class UrlFileSegmentDownload {
         if (failureFlag) {
             throw new RuntimeException("下载失败");
         }
-        return downloadPath;
+        return this.downloadPath;
     }
 
     /**
@@ -511,19 +624,18 @@ public class UrlFileSegmentDownload {
         }
 
         /**
-         *
          * 需求想要多个线程如果下完其中一个partSize的话，需要打印第i段下载完成；实际上这个应该是没有意义的；
          * 最初线程分配好的任务最终也不一定就是最初的这几个线程完成的，而且先后顺序也没法保证，就算打印出来，又没啥用；
          * 而且分配任务是按照连接数来的，异常情况下，连接数是个变数；现在只能临时记录下分配任务时的这几个属性;
-         *
+         * <p>
          * 两种效果，一种是每完成（总数除连接数）个就打印++i次，这样保证打印的第i段完成是顺序递增的
          * 还有一种是按照最初任务分配的段来确定，当时分配的第几段，这几段的几个线程全部完成就打印这个段完成；但是由于线程调度
          * 原因，这样可能会发生，显示第三段完成，然后才是第一段完成，目前采用的是这种方式
-         *
+         * <p>
          * 单独T出来一个方法来做这个处理，将来不需要了，直接去掉这块就好
          *
-         * @param segmentNum          该任务所属分段
-         * @param currConnectionSize  分配任务时是按照多少可用连接数来分的
+         * @param segmentNum         该任务所属分段
+         * @param currConnectionSize 分配任务时是按照多少可用连接数来分的
          */
         public void setPart(int segmentNum, int currConnectionSize) {
             this.segmentNum = segmentNum;
@@ -543,10 +655,7 @@ public class UrlFileSegmentDownload {
                 }
                 tempList.add(this);
                 int andIncrement = doneTaskNum.incrementAndGet();
-                // FIXME 一次就分为打印有问题，后面修改
-                if (andIncrement == totalSegment) {
-                    print(String.format("第[%d]块下载完成, 当前实际共下载完成[%d]段", totalSegment, totalSegment));
-                } else if (tempList.size() == this.currConnectionSize) {
+                if (tempList.size() == this.currConnectionSize) {
                     print(String.format("第[%d]块下载完成, 当前实际共下载完成[%d]段", this.segmentNum, andIncrement / this.currConnectionSize));
                 }
                 doneTaskMap.put(this.segmentNum, tempList);
@@ -611,6 +720,7 @@ public class UrlFileSegmentDownload {
             try {
                 // 这样做是因为为了能够每写一部分数据就能看到，所以文件在每个任务中写完都调用了close方法，所以任务重复调用要重复初始化
                 RandomAccessFile raf = new RandomAccessFile(downloadPath, "rws");
+                raf.setLength(fileSize);
                 print(String.format("%s从[%s]下载到[%s]", serverPath, startSize, endSize));
                 HttpURLConnection conn = getConnection(serverPath, "GET", properties);
                 if (CONNECTION_OK.contains(conn.getResponseCode())) {
@@ -620,30 +730,13 @@ public class UrlFileSegmentDownload {
                     try (InputStream inputStream = conn.getInputStream()) {
                         print(String.format("设置文件写入点： %s", startSize));
                         raf.seek(startSize);
-                        byte[] buf = new byte[1024 * 4];
-                        long count;
-                        final int bufLength = buf.length;
-                        // 由于缓冲数组是有长度的，如果最后一次没有读满，却直接写入数组长度的话，会有很多空，
-                        // 所以计算出来最后一次数组中有效数据的长度；空看起来似乎也不占用长度，只是有些编辑器打开会显示NULL，很难看
-                        boolean lastWriteIsFull = true;
-                        if ((endSize - startSize) % bufLength == 0) {
-                            count = (endSize - startSize) / bufLength;
-                        } else {
-                            count = (endSize - startSize) / bufLength + 1;
-                            lastWriteIsFull = false;
+                        byte[] buf = new byte[1024];
+                        int len;
+                        while ((len = inputStream.read(buf)) != -1) {
+                            raf.write(buf, 0, len);
                         }
-                        int loopIndex = 0;
-                        while (inputStream.read(buf) != -1) {
-                            loopIndex ++;
-                            // 最后一次只写入有效数据的长度
-                            if (loopIndex == count && !lastWriteIsFull) {
-                                raf.write(buf, 0, (int) (endSize - startSize) % bufLength);
-                            } else {
-                                raf.write(buf);
-                            }
-                        }
-                        // 每个任务写的内容都能及时看到
                         raf.close();
+                        // 每个任务写的内容都能及时看到
                         status = STATUS_DONE;
                         print(String.format("任务 %s 下载完成，状态置为2", this));
                     } catch (Exception e) {
@@ -676,17 +769,15 @@ public class UrlFileSegmentDownload {
     public static void main(String[] args) throws IOException {
         String source = "test.file";
         String[] paths = {"http://localhost:8080/docs/" + source, "http://localhost:8081/docs/" + source, "http://aaa.2121.com/"};
-//        String[] paths = {"http://47.88.102.56/" + source, "http://47.89.244.85/" + source, /*"http://47.89.209.42/" + source, */"http://aaa.2121.com/"};
+//        String[] paths = {/*"http://47.88.102.56/" + source, */"http://47.89.244.85/" + source,/* "http://47.89.209.42/" + source, */"http://aaa.2121.com/"};
         String downloadPath = System.getProperty("user.dir") + File.separator + "src" + File.separator + "main" + File.separator + "resources";
-        UrlFileSegmentDownload load = new UrlFileSegmentDownload(paths, downloadPath, 5002 * 1024 * 50, 5, true);
-        load.setConnectionTimeOut(1000);
+        UrlFileSegmentDownload load = new UrlFileSegmentDownload(1000 * 1024 * 1024, 5, 200, true);
         long before = System.currentTimeMillis();
-        String download = load.download();
+        String download = load.download(paths, downloadPath);
         long endTime = System.currentTimeMillis();
-        System.out.println("共耗时: " + (endTime - before));
-//        System.out.println("源文件MD5: " + MD5Util.getFileMD5String(new File("D:\\tomcat9-2\\webapps\\docs\\" + source)));
-        // 2f282b84e7e608d5852449ed940bfc51
-        // 2f282b84e7e608d5852449ed940bfc51
+        System.out.println("下载共耗时: " + (endTime - before));
+        System.out.println("下载完成后文件大小： " + new File(download).length());
         System.out.println("下载后MD5：" + MD5Util.getFileMD5String(new File(download)));
+        ;
     }
 }
