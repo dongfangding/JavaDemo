@@ -15,6 +15,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
+ *
+ * 对多台服务器上的同一个文件进行分片下载
+ *
  * 网络资源分片下载，本类不是作为多个服务器的不同资源在本地进行多线程下载；而是多个服务器都有一个相同的资源，然后使用多线程对不同服务器上进行分片下载；
  * 每个服务器各下载一部分，最终合成一个最终的文件；
  *
@@ -369,7 +372,9 @@ public class UrlFileSegmentDownload {
     }
 
     /**
-     * 心跳检测
+     * 心跳检测,这个也可以做成线程每隔多久去检测一次来调用这个；但目前的做法是下载前先获取一次，下载异常再获得；
+     * 没有做成循环检测；唯一的问题是，下载异常后有连接可用，连接异常后果断时间有恢复，不会去识别最新的连接；
+     * 当然如果已有的连接都挂了，还是会去重新获取最新的；所以只会造成下载过程中出现异常又恢复丢失连接，而不会出现丢失全部连接影响下载任务
      */
     private void heartCheck() {
         print("开始心跳检测");
@@ -781,16 +786,15 @@ public class UrlFileSegmentDownload {
     }
 
     public static void main(String[] args) throws IOException {
-        String source = "test.file";
-//        String[] paths = {"http://localhost:8080/docs/" + source, "http://localhost:8081/docs/" + source, "http://localhost:8081/examples/" + source, };
-        String[] paths = {"http://47.88.102.56/" + source, "http://47.89.244.85/" + source, "http://47.89.209.42/" + source, "http://aaa.2121.com/"};
+        String source = "changelog.file";
+        String[] paths = {"http://localhost:8080/docs/" + source, "http://localhost:8081/docs/" + source, "http://localhost:8081/examples/" + source, };
         String downloadPath = System.getProperty("user.dir") + File.separator + "src" + File.separator + "main" + File.separator + "resources";
-        UrlFileSegmentDownload load = new UrlFileSegmentDownload(10 * 1024 * 1024, 5, 200, true);
+        UrlFileSegmentDownload load = new UrlFileSegmentDownload(3 * 1024, 5, 200, true);
         long before = System.currentTimeMillis();
         String download = load.download(paths, downloadPath);
         long endTime = System.currentTimeMillis();
-        System.out.println("下载共耗时: " + (endTime - before));
-        System.out.println("下载完成后文件大小： " + new File(download).length());
+        System.out.println("下载共耗时: " + (endTime - before) + "ms");
+        System.out.println("下载完成后文件大小： " + new File(download).length() + "byte");
         System.out.println("下载后MD5：" + MD5Util.getFileMD5String(new File(download)));
     }
 }
