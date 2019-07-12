@@ -1,4 +1,4 @@
-package jdk.util;
+package jdk.secret;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -8,16 +8,19 @@ import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-
+/**
+ * MD5加密工具类
+ */
 public class MD5Util {
-    protected static char[] hexDigits = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9','a', 'b', 'c', 'd', 'e', 'f' };
+    protected static char[] hexDigits = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
     protected static MessageDigest messageDigest = null;
-    static{
-        try{
+
+    static {
+        try {
             messageDigest = MessageDigest.getInstance("MD5");
-        }catch(NoSuchAlgorithmException nsaex){
-            System.err.println(MD5Util.class.getName()+"初始化失败，MessageDigest不支持MD5Util。");
+        } catch (NoSuchAlgorithmException nsaex) {
+            System.err.println(MD5Util.class.getName() + "初始化失败，MessageDigest不支持MD5Util。");
             nsaex.printStackTrace();
         }
     }
@@ -49,7 +52,7 @@ public class MD5Util {
         }
         int d1 = n / 16;
         int d2 = n % 16;
-        return hexDigits[d1] + "" +hexDigits[d2];
+        return hexDigits[d1] + "" + hexDigits[d2];
     }
 
     /**
@@ -58,7 +61,7 @@ public class MD5Util {
      * @param origin 需加密的字符串
      * @return String 加密后的字符串
      */
-    public static String MD5Encode(String origin) {
+    public static String encode(String origin) {
         return byteArrayToHexString(messageDigest.digest(origin.getBytes()));
     }
 
@@ -68,7 +71,7 @@ public class MD5Util {
      * @param bytes 需加密的字节数组
      * @return String 加密后的字符串
      */
-    public static String MD5Encode(byte[] bytes) {
+    public static String encode(byte[] bytes) {
         return byteArrayToHexString(messageDigest.digest(bytes));
     }
 
@@ -89,7 +92,7 @@ public class MD5Util {
      * @Title: MD5EncodeBytes
      * @Description:
      */
-    public static byte[] MD5EncodeBytes(byte[] binaryData) {
+    public static byte[] encodeToByte(byte[] binaryData) {
         messageDigest.update(binaryData);
         return messageDigest.digest();
     }
@@ -101,11 +104,11 @@ public class MD5Util {
      * @param charsetName 编码格式
      * @return String 加密后的字符串
      */
-    public static String MD5Encode(String origin, String charsetName) {
+    public static String encode(String origin, String charsetName) {
         origin = origin.trim();
         String resultString = null;
         try {
-            resultString = new String(origin);
+            resultString = origin;
             MessageDigest md = MessageDigest.getInstance("MD5");
             resultString = byteArrayToHexString(md.digest(resultString.getBytes(charsetName)));
         } catch (Exception ex) {
@@ -132,5 +135,24 @@ public class MD5Util {
 
     private static String bufferToHex(byte[] bytes) {
         return bufferToHex(bytes, 0, bytes.length);
+    }
+
+    /**
+     * MD5加盐
+     * @param string
+     * @param slat
+     * @return
+     */
+    public static String encodeSalt(String string, String slat) {
+        byte[] bytes = messageDigest.digest((string + slat).getBytes());
+        StringBuilder result = new StringBuilder();
+        for (byte b : bytes) {
+            String temp = Integer.toHexString(b & 0xff);
+            if (temp.length() == 1) {
+                temp = "0" + temp;
+            }
+            result.append(temp);
+        }
+        return result.toString();
     }
 }
