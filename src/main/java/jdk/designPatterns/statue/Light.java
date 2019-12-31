@@ -5,9 +5,6 @@ public class Light {
 
     Light() {
         color = new GreenColor(this);
-        if (color == null) {
-            throw new NullPointerException();
-        }
     }
 
     public void showColor() {

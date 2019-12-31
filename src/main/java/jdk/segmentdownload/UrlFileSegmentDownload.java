@@ -1,6 +1,6 @@
 package jdk.segmentdownload;
 
-import jdk.util.MD5Util;
+import jdk.secret.MD5Util;
 
 import java.io.File;
 import java.io.IOException;
@@ -320,9 +320,9 @@ public class UrlFileSegmentDownload {
      * 获取远程文件大小
      */
     private void getRemoteFileSize() {
+        lock.lock();
         try {
             while (this.fileSize == 0) {
-                lock.lock();
                 if (connectionMap == null || connectionMap.isEmpty()) {
                     checkAliveConnection();
                 }
@@ -667,8 +667,8 @@ public class UrlFileSegmentDownload {
          * 这样写，不保证顺序，按照分配任务的时候的分段来打印；如果第三段的任务先完成，就先打印第三段完成，而不是第一段完成
          */
         private void addPartAndPrint() {
+            lock.lock();
             try {
-                lock.lock();
                 List<DownloadTask> tempList = doneTaskMap.get(this.segmentNum);
                 if (tempList == null) {
                     tempList = new ArrayList<>();
