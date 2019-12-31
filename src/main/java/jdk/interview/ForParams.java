@@ -21,6 +21,7 @@ public class ForParams {
             printInt(0);
         }
 
+        System.out.println();
         System.out.println("-----------------------------");
         /**
          * 等同于以下语句
@@ -33,4 +34,7 @@ public class ForParams {
             printInt(++i);
         }
     }
+
+    // i = 5
+    // 0 2 2 0 4 4 0 6
 }

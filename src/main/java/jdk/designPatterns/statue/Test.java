@@ -30,5 +30,7 @@ public class Test {
         light.showColor();
         light.showColor();
         light.showColor();
+        light.showColor();
+        light.showColor();
     }
 }
