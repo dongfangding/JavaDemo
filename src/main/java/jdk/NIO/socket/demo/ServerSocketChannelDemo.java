@@ -49,10 +49,12 @@ public class ServerSocketChannelDemo {
                 if (eventKey.isAcceptable()) {
                     // 接受一个客户端连接
                     SelectableChannel channel = serverSocketChannel.accept();
-                    // 设置为非阻塞模式
-                    channel.configureBlocking(false);
-                    // 注册客户端的读写事件
-                    channel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+                    if (channel != null) {
+                        // 设置为非阻塞模式
+                        channel.configureBlocking(false);
+                        // 注册客户端的读写事件
+                        channel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+                    }
                 }
 
                 // 读事件就绪
