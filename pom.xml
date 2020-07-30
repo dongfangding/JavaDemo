@@ -94,11 +94,13 @@
     <dependencies>
 
         <!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
+        <!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>28.1-jre</version>
+            <version>29.0-jre</version>
         </dependency>
+
 
 
         <!-- https://mvnrepository.com/artifact/junit/junit -->
