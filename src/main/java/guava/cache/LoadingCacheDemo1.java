@@ -118,8 +118,11 @@ public class LoadingCacheDemo1 {
                     }
 
                     /**
-                     * 默认调用的就是load方法，所以load方法需要实现如果取不到值的情况下，重新加载缓存。
-                     * 该方法会在refreshAfterWrite缓存过期的时候被调用
+                     * reload默认调用的就是load方法，所以load方法需要实现如何加载缓存（即从原始数据源中取对应key的值），重新加载缓存。
+                     * 该方法会在refreshAfterWrite缓存过期的时候被调用, 但内部不是一直在刷新，而是当refreshAfterWrite条件满足
+                     * 之后，原先存储的数据已经过期了，但数据还在，如果再次获取某个key的时候才会再次调用reload。
+                     * 这个时候如果想要获取到最新值，reload的实现就需要同步或者使用闭锁，否则获取的大概率就是旧的值了。
+                     * 也就是这个刷新不是主动的，而是要由某个key来触发
                      *
                      * 其实这里重写的最大意义就是将重新加载的代码给异步了，如果不需要的话，没有必要重写
                      * @param key
@@ -129,6 +132,7 @@ public class LoadingCacheDemo1 {
                      */
                     @Override
                     public ListenableFuture<String> reload(String key, String oldValue) throws Exception {
+                        System.out.println("reload=============================: " + key);
                         // 有些键不需要刷新，并且我们希望刷新是异步完成的, 如果不需要刷新直接返回旧值，如果需要刷新则调用load方法重新缓存
                         if (neverNeedsRefresh(key)) {
                             return Futures.immediateFuture(oldValue);
@@ -137,7 +141,7 @@ public class LoadingCacheDemo1 {
                             ListenableFutureTask<String> task = ListenableFutureTask.create(() -> load(key));
                             EXECUTOR.execute(task);
                             // 可选使用闭锁来让获取缓存的线程强制等待缓存加载完成使用最新值, 需要看load方法的执行时间以及对缓存不一致的接受程度自行决定
-//                        task.get();
+                        task.get();
                             return task;
                         }
                     }
@@ -168,8 +172,11 @@ public class LoadingCacheDemo1 {
                     }
 
                     /**
-                     * 默认调用的就是load方法，所以load方法需要实现如果取不到值的情况下，重新加载缓存。
-                     * 该方法会在refreshAfterWrite缓存过期的时候被调用
+                     * reload默认调用的就是load方法，所以load方法需要实现如何加载缓存（即从原始数据源中取对应key的值），重新加载缓存。
+                     * 该方法会在refreshAfterWrite缓存过期的时候被调用, 但内部不是一直在刷新，而是当refreshAfterWrite条件满足
+                     * 之后，原先存储的数据已经过期了，但数据还在，如果再次获取某个key的时候才会再次调用reload。
+                     * 这个时候如果想要获取到最新值，reload的实现就需要同步或者使用闭锁，否则获取的大概率就是旧的值了。
+                     * 也就是这个刷新不是主动的，而是要由某个key来触发
                      *
                      * 其实这里重写的最大意义就是将重新加载的代码给异步了，如果不需要的话，没有必要重写
                      * @param key
@@ -242,8 +249,10 @@ public class LoadingCacheDemo1 {
         logTimeGet(LAZY_LOADING_CACHE, "1");
         Thread.sleep(1000);
 
+
         logTimeGet(LAZY_LOADING_CACHE, "1");
 
+        Thread.sleep(3000);
         logTimeGet(LAZY_LOADING_CACHE, "1");
 
         logTimeGet(LAZY_LOADING_CACHE, "1");
