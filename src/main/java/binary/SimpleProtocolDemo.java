@@ -44,7 +44,6 @@ public class SimpleProtocolDemo {
 
 
     public static void main(String[] args) {
-
         SimpleProtocolDemo demo = new SimpleProtocolDemo();
         demo.setType(true);
         demo.setCmd(Cmd.BONG);
