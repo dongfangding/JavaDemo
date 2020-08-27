@@ -56,7 +56,7 @@ public class LoadingCacheDemo1 {
     /**
      * 初始化直接缓存全部资源， 本地缓存失效后，重新缓存全部数据
      */
-    private static LoadingCache<String, Person> INIT__LOADING_CACHE;
+    private static LoadingCache<String, Person> INIT_LOADING_CACHE;
 
     /**
      * reload线程池
@@ -81,12 +81,12 @@ public class LoadingCacheDemo1 {
 
     public static void main(String[] args) throws InterruptedException {
         // 演示基本获取， 数据原始集合更新的情况下，缓存未及时更新会存在数据不一致的问题
-        lazyInit();
+//        lazyInit();
 
 
         // 初始化加载全部缓存，不要和上面那个演示一起执行，因为上面的代码有睡眠，代码是阻塞的，会把这个演示对时间的预演不成立
         // 这个方法也会演示guava的大坑和注意事项，非常重要
-//        initLoad();
+        initLoad();
 
         EXECUTOR.shutdown();
     }
@@ -98,6 +98,7 @@ public class LoadingCacheDemo1 {
         LAZY_LOADING_CACHE = CacheBuilder.newBuilder()
                 .maximumSize(500)
                 .recordStats()
+                .softValues()
                 .refreshAfterWrite(3, TimeUnit.SECONDS)
                 .build(new CacheLoader<String, Person>() {
                     /**
@@ -119,11 +120,11 @@ public class LoadingCacheDemo1 {
                         String id = data[2];
                         Person s = get(id);
                         // 如果记录不存在并且这个key之前存在过，则存入一个默认值，原因是guava不支持value为null,如果直接return null， 该key对应的value会
-                        // 一直为最后一次缓存的value，会导致业务出问题。如果这个key之前不存在，guava内部会抛异常，所以不会增加额外key.
+                        // 一直为最后一次缓存的value，会导致业务出问题。如果这个key之前不存在，并且返回null， guava就不会尝试新增一个key来保存null
                         // 这里需要使用方除了判断null还要判断自己存入的代表无效的默认值，并且要将是默认值的key删除掉
                         // 提供一个工具包装了这个步骤
                         // guava.cache.LocalCacheUtil.getGuavaCache(com.google.common.cache.LoadingCache<java.lang.String,T>, T, java.lang.String, java.lang.String...)
-                        if (s == null && INIT__LOADING_CACHE.asMap().containsKey(key)) {
+                        if (s == null && INIT_LOADING_CACHE.asMap().containsKey(key)) {
                             s = Person.INVALID_PERSON;
                             System.out.printf("只有refreshAfterWrite模式的时候需要: 数据库中对应[%s]记录不存在，存入一个默认值[%s]，代表无效\n", key, s);
                         }
@@ -166,9 +167,10 @@ public class LoadingCacheDemo1 {
      * 初始化启动先加载全部缓存的LoadingCache
      */
     private static void initInitCache() {
-        INIT__LOADING_CACHE = CacheBuilder.newBuilder()
+        INIT_LOADING_CACHE = CacheBuilder.newBuilder()
                 .maximumSize(500)
                 .recordStats()
+                .softValues()
                 .refreshAfterWrite(3, TimeUnit.SECONDS)
                 .build(new CacheLoader<String, Person>() {
                     /**
@@ -191,11 +193,11 @@ public class LoadingCacheDemo1 {
                         String id = data[2];
                         Person person = get(id);
                         // 如果记录不存在并且这个key之前存在过，则存入一个默认值，原因是guava不支持value为null,如果直接return null， 该key对应的value会
-                        // 一直为最后一次缓存的value，会导致业务出问题。如果这个key之前不存在，guava内部会抛异常，所以不会增加额外key.
+                        // 一直为最后一次缓存的value，会导致业务出问题。如果这个key之前不存在，并且返回null， guava就不会尝试新增一个key来保存null
                         // 这里需要使用方除了判断null还要判断自己存入的代表无效的默认值，并且要将是默认值的key删除掉
                         // 提供一个工具包装了这个步骤
                         // guava.cache.LocalCacheUtil.getGuavaCache(com.google.common.cache.LoadingCache<java.lang.String,T>, T, java.lang.String, java.lang.String...)
-                        if (person == null && INIT__LOADING_CACHE.asMap().containsKey(key)) {
+                        if (person == null && INIT_LOADING_CACHE.asMap().containsKey(key)) {
                             System.out.printf("只有refreshAfterWrite模式的时候需要: 数据库中对应[%s]记录不存在，存入一个默认值[%s]，代表无效\n", key, INVALID_STRING_VALUE);
                             person = Person.INVALID_PERSON;
                         }
@@ -233,7 +235,7 @@ public class LoadingCacheDemo1 {
                 });
         // 这里也可以直接初始化缓存，就不用懒加载获取某个key的时候再去缓存
         DATA_MAP.forEach((k, v) -> {
-            INIT__LOADING_CACHE.put(MessageFormat.format(CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), k), v);
+            INIT_LOADING_CACHE.put(MessageFormat.format(CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), k), v);
         });
     }
 
@@ -326,15 +328,15 @@ public class LoadingCacheDemo1 {
     private static void initLoad() throws InterruptedException {
         System.out.println("==============================================initLoad===========================================");
         System.out.println("由于缓存进行了启动初始化加载，所以第一次如果key存在，会直接拿缓存");
-        logTimeGet(INIT__LOADING_CACHE, CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "4");
+        logTimeGet(INIT_LOADING_CACHE, CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "4");
 
-        DATA_MAP.put("4", new Person("4", DATA_MAP.get("1").getUsername() + "被修改了"));
+        DATA_MAP.put("4", new Person("4", DATA_MAP.get("4").getUsername() + "被修改了"));
         System.out.println("id=4的对象，由于没有到刷新时间, 所以用的还是旧值");
-        logTimeGet(INIT__LOADING_CACHE, CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "4");
+        logTimeGet(INIT_LOADING_CACHE, CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "4");
 
         Thread.sleep(3000);
         System.out.println("故意睡眠超过过期时间，过期之后的第一次请求触发刷新操作，由于我们使用了闭锁，让获取值的线程强制等待刷新任务完整，所以这里会耗时比较久，但值是最新的");
-        logTimeGet(INIT__LOADING_CACHE, CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "4");
+        logTimeGet(INIT_LOADING_CACHE, CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "4");
 
         System.out.println("refreshAfterWrite模式不支持放入value为null， 但是如果之前这个key是存在的，在触发refresh方法的时候去查询发现数据不再了，return null的时候是无法将value置为null的，\r\n" +
                 "所以那些取缓存用null判断都会有问题，这个情况下缓存的值永远都是最后一次的旧值。如果想删除，在外部是可以删除的，但是\r\n" +
@@ -350,7 +352,7 @@ public class LoadingCacheDemo1 {
         DATA_MAP.put("4",new Person("4", "tony又回来了"));
         Thread.sleep(3000);
         System.out.println("将id=4的对象再放回来");
-        logTimeGet(INIT__LOADING_CACHE, CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "4");
+        logTimeGet(INIT_LOADING_CACHE, CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "4");
 
         System.out.println("--------------------------");
 
@@ -363,31 +365,31 @@ public class LoadingCacheDemo1 {
         // 使用refreshAtWrite模式一定要有默认值的处理，原因在上面说了
         System.out.println("使用refreshAtWrite模式一定要有默认值的处理，原因在上面说了");
 
-        Person actualValue = LocalCacheUtil.getGuavaCache(INIT__LOADING_CACHE, CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "4");
+        Person actualValue = LocalCacheUtil.getGuavaCache(INIT_LOADING_CACHE, CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "4");
         System.out.printf("缓存[%s]实际对应的value为代表无效value的[%s], 我们需要在使用的时候判断这个默认值，如果是默认值，也不走业务的，并且要删除该key\r\n",
                 MessageFormat.format(CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "4"), actualValue);
         System.out.println("看一下此事缓存内部数据: ");
-        System.out.println(INIT__LOADING_CACHE.asMap());
+        System.out.println(INIT_LOADING_CACHE.asMap());
 
         System.out.println("封装了一个方法，实际上存的是无效值， 提供一个方法，传入代表无效值的对象，然后方法内部判断转换为null, 并清除缓存");
-        Person s = LocalCacheUtil.getGuavaCacheCheckDefault(INIT__LOADING_CACHE, Person.INVALID_PERSON, CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "4");
+        Person s = LocalCacheUtil.getGuavaCacheCheckDefault(INIT_LOADING_CACHE, Person.INVALID_PERSON, CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "4");
         System.out.println("调用封装号的方法好，返回的值为" + s);
         System.out.println("此时再来看一下缓存内部，看是否完成了key的清除");
-        System.out.println(INIT__LOADING_CACHE.asMap());
+        System.out.println(INIT_LOADING_CACHE.asMap());
         System.out.println("--------------------------");
 
         Thread.sleep(3000);
-        logTimeGet(INIT__LOADING_CACHE,  CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "5");
+        logTimeGet(INIT_LOADING_CACHE,  CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "5");
 
 
         System.out.println("我们加了如果值不存在就放入默认值也会带来另外一个问题，如果这个key本身在缓存中不存在，数据库中也查询不到，我们return null\n" +
                 "的时候原先guava会报错，不会把key 和value存进去，但是我们放入默认值之后就会导致多维护一对垃圾键值对。所以需要在load方法里取原始数据\n" +
-                "的时候多做一次判断，如果值为null并且这个key之前存在过，才放入默认值，否则剩下的就交给guava帮我处理就好了");
+                "的时候多做一次判断，如果值为null并且这个key之前存在过，才放入默认值，否则key不存在且值为空，guava就不会去新增这个key");
 
         Thread.sleep(3000);
         System.out.println("删除之后，本来调用get还会存入默认值；但是因为我们上面将key删除了，又加了上面一行的描述，所以这个时候垃圾键值对就不会被缓存了");
-        logTimeGet(INIT__LOADING_CACHE, CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "4");
-        System.out.println(INIT__LOADING_CACHE.asMap());
+        logTimeGet(INIT_LOADING_CACHE, CacheKeyEnum.LOADING_CACHE_DEMO1_INIT.getTemplate(), "4");
+        System.out.println(INIT_LOADING_CACHE.asMap());
 
         System.out.println("==============================================initLoad===========================================");
 
