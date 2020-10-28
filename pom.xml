@@ -13,6 +13,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jdk.version>1.8</jdk.version>
         <poi.version>3.7</poi.version>
+        <cglib-version>3.3.0</cglib-version>
     </properties>
 
     <build>
@@ -222,6 +223,14 @@
             <artifactId>lombok</artifactId>
             <version>1.18.10</version>
         </dependency>
+
+        <!-- https://mvnrepository.com/artifact/cglib/cglib -->
+        <dependency>
+            <groupId>cglib</groupId>
+            <artifactId>cglib</artifactId>
+            <version>${cglib-version}</version>
+        </dependency>
+
 
 
     </dependencies>
