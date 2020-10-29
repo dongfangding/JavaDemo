@@ -8,17 +8,17 @@ package jdk.designPatterns.proxy.cglib;
  */
 public class AddCalcComponent {
 
-    private String id;
+    private int id;
 
     AddCalcComponent() {
 
     }
 
-    public AddCalcComponent(String id) {
+    public AddCalcComponent(int id) {
         this.id = id;
     }
 
     public int add(int a, int b, int c, int d) {
-        return a + b + c + d;
+        return a + b + c + d + id;
     }
 }
